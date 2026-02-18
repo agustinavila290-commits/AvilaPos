@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Tamaños de fuente responsive base - EXTREMADAMENTE COMPACTO */
+  html {
+    font-size: 10px !important; /* EXTREMO para móvil */
+  }
+  
+  @media (min-width: 640px) {
+    html {
+      font-size: 11px !important; /* EXTREMO para tablet */
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    html {
+      font-size: 12px !important; /* EXTREMO para desktop */
+    }
+  }
+  
+  @media (min-width: 1440px) {
+    html {
+      font-size: 13px !important; /* Pantallas grandes */
+    }
+  }
+
+  /* ===== LIGHT MODE (Default) ===== */
+  body {
+    @apply bg-gray-50 text-gray-800 transition-colors duration-200;
+  }
+
+  /* ===== DARK MODE - POS Professional ===== */
+  .dark {
+    color-scheme: dark;
+  }
+  
+  .dark body {
+    @apply bg-slate-900 text-gray-100;
+  }
+  
+  .dark #root {
+    @apply bg-slate-900 text-gray-100;
+  }
+  
+  /* Borders globales */
+  * {
+    @apply border-gray-200;
+  }
+  
+  .dark * {
+    @apply border-slate-700;
+  }
+
+  /* ===== DARK MODE GLOBAL - Valores directos para evitar dependencia circular ===== */
+  .dark .bg-white {
+    background-color: #1e293b; /* slate-800 */
+  }
+  .dark .bg-gray-50 {
+    background-color: #0f172a; /* slate-900 */
+  }
+  .dark .bg-gray-100 {
+    background-color: #334155; /* slate-700 */
+  }
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: #f1f5f9; /* gray-100 / slate-100 */
+  }
+  .dark .text-gray-700 {
+    color: #d1d5db; /* gray-300 */
+  }
+  .dark .text-gray-600 {
+    color: #9ca3af; /* gray-400 */
+  }
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: #6b7280; /* gray-500 */
+  }
+  .dark .border-gray-200,
+  .dark .border-gray-100 {
+    border-color: #475569; /* slate-600 */
+  }
+  .dark .hover\:bg-gray-50:hover {
+    background-color: #334155; /* slate-700 */
+  }
+  .dark .hover\:bg-gray-100:hover {
+    background-color: #475569; /* slate-600 */
+  }
+  .dark table thead {
+    background-color: #334155;
+    border-color: #475569;
+  }
+  .dark table tbody tr {
+    border-color: #334155;
+  }
+  .dark table tbody tr:hover {
+    background-color: rgba(51, 65, 85, 0.5);
+  }
+  .dark table td,
+  .dark table th {
+    color: #e2e8f0; /* slate-200 */
+  }
+}
+
+@layer components {
+  /* Botones Soft UI - Responsive MUY COMPACTO */
+  .btn-primary {
+    @apply bg-gradient-to-br from-blue-500 to-blue-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all duration-200 font-medium;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border border-gray-200 font-medium;
+  }
+  .dark .btn-secondary {
+    @apply bg-slate-700 text-gray-200 border-slate-600 hover:bg-slate-600;
+  }
+  
+  /* Input fields Soft UI - Responsive MUY COMPACTO */
+  .input-field {
+    @apply w-full px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white border border-gray-200 text-gray-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-gray-400 shadow-sm transition-colors duration-200;
+  }
+  
+  .dark .input-field {
+    @apply bg-slate-800 border-slate-600 text-gray-100 placeholder-gray-500 focus:ring-blue-500 focus:border-blue-500;
+  }
+
+  /* Barra de búsqueda unificada (misma configuración que Punto de Venta) */
+  .search-input {
+    @apply w-full px-4 py-2.5 text-sm bg-white border border-gray-200 text-gray-800 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-gray-400 shadow-sm transition-colors duration-200;
+  }
+  .dark .search-input {
+    @apply bg-slate-700 border-slate-600 text-gray-100 placeholder-gray-500 focus:ring-blue-400 focus:border-blue-400;
+  }
+  
+  /* Cards Soft UI con sombra suave - Responsive MUY COMPACTO */
+  .card {
+    @apply bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-gray-100 transition-colors duration-200;
+  }
+  
+  .dark .card {
+    @apply bg-slate-800 border-slate-700 text-gray-100 shadow-slate-900/50;
+  }
+
+  /* Metric Card - para KPIs - Responsive MUY COMPACTO */
+  .metric-card {
+    @apply bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-gray-100 hover:shadow-xl transition-all duration-200;
+  }
+  
+  .dark .metric-card {
+    @apply bg-slate-800 border-slate-700 text-gray-100 shadow-slate-900/50;
+  }
+
+  /* Sidebar item activo - Responsive */
+  .sidebar-item {
+    @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base text-gray-600 hover:bg-gray-100 transition-all duration-200;
+  }
+  
+  .dark .sidebar-item {
+    @apply text-gray-300 hover:bg-slate-700;
+  }
+
+  .sidebar-item-active {
+    @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30;
+  }
+  
+  .dark .sidebar-item-active {
+    @apply from-blue-600 to-blue-700 shadow-blue-600/40;
+  }
+
+  /* Inputs: texto oscuro para buena legibilidad */
+  input,
+  textarea,
+  select {
+    @apply text-gray-800;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-gray-400;
+  }
+
+  /* Clase para aplicar mayúsculas SOLO donde se necesite */
+  .uppercase-input {
+    text-transform: uppercase;
+  }
+
+  /* Animaciones adicionales */
+  .animate-slide-in-up {
+    animation: slideInUp 0.4s ease-out;
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Transiciones suaves para todo */
+  .smooth-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  /* Tema oscuro global */
+  * {
+    @apply border-gray-700;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 bg-gray-800 border border-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500;
+  }
+  
+  .card {
+    @apply bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700;
+  }
+
+  /* Inputs en fondos claros (celdas/tarjetas blancas): texto oscuro para buena legibilidad */
+  .bg-white input,
+  .bg-white textarea,
+  .bg-white select {
+    @apply text-gray-900;
+  }
+  .bg-white input::placeholder,
+  .bg-white textarea::placeholder {
+    @apply text-gray-500;
+  }
+  .bg-white input:focus,
+  .bg-white textarea:focus,
+  .bg-white select:focus {
+    @apply text-gray-900;
+  }
+
+  /* Mayúsculas automáticas en todos los campos de texto editables */
+  input:not([type="number"]):not([type="password"]):not([type="date"]):not([type="datetime-local"]):not([type="time"]):not([type="month"]):not([type="week"]),
+  textarea {
+    text-transform: uppercase;
+  }
+}

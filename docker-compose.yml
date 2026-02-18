@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: casa_repuestos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: casa_repuestos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Django (comentado por ahora, descomentar cuando esté listo)
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: casa_repuestos_backend
+  #   restart: unless-stopped
+  #   command: python manage.py runserver 0.0.0.0:8000
+  #   environment:
+  #     - DEBUG=True
+  #     - DB_HOST=db
+  #     - DB_PORT=5432
+  #     - DB_NAME=casa_repuestos
+  #     - DB_USER=postgres
+  #     - DB_PASSWORD=postgres
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./backend:/app
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+  # Frontend React (comentado por ahora, descomentar cuando esté listo)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: casa_repuestos_frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+    driver: local

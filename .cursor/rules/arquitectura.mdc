@@ -1,0 +1,11 @@
+---
+description: Índice del proyecto para ubicar funcionalidad (backend, frontend, rutas, servicios)
+alwaysApply: true
+---
+
+# Navegación del proyecto
+
+- **Mapa completo:** Consultar `docs/ARQUITECTURA.md` para encontrar dónde está cada funcionalidad (API, páginas, servicios, módulos).
+- **Backend:** Django en `backend/`. Una app por dominio: `apps/usuarios/`, `apps/productos/`, `apps/ventas/`, `apps/compras/`, `apps/inventario/`, `apps/clientes/`, `apps/devoluciones/`, `apps/reportes/`, `apps/configuracion/`, `apps/sistema/`, `apps/facturacion/`. URLs en `backend/backend/urls.py` (prefijos `/api/...`).
+- **Productos:** Búsqueda con/sin tildes en `apps/productos/search_utils.py`. Importación Excel (mapeo columnas, celdas) en `apps/productos/excel_utils.py`. Vistas en `apps/productos/views.py`.
+- **Frontend:** Rutas en `frontend/src/App.jsx`. Servicios en `frontend/src/services/` (baseURL `/api`, no duplicar `/api` en la ruta). Páginas en `frontend/src/pages/`. Índice breve en `frontend/src/README.md`.

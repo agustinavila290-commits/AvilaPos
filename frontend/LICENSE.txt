@@ -1,0 +1,25 @@
+LICENCIA DE SOFTWARE - Casa de Repuestos
+
+Copyright (c) 2026 Casa de Repuestos
+
+Sistema de Gestión Integral para Casa de Repuestos de Motos
+
+TÉRMINOS Y CONDICIONES:
+
+1. Este software es propiedad de Casa de Repuestos.
+
+2. Se concede el derecho de uso del software a la empresa propietaria
+   y sus empleados autorizados.
+
+3. Está prohibida la redistribución, modificación o venta del software
+   sin autorización expresa del propietario.
+
+4. El software se proporciona "TAL CUAL", sin garantías de ningún tipo,
+   expresas o implícitas.
+
+5. En ningún caso los autores o titulares del copyright serán responsables
+   de cualquier reclamo, daños u otras responsabilidades.
+
+Para consultas o soporte, contactar a: soporte@casarepuestos.com
+
+Versión 1.0.0 - Febrero 2026
