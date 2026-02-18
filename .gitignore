@@ -45,3 +45,6 @@ build/
 
 # Electron
 out/
+
+# Carpeta auxiliar / duplicada
+Avila-/

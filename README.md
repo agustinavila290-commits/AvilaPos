@@ -2,9 +2,9 @@
 
 **Versión**: 1.0.0 (9 módulos completados)  
 **Estado**: ✅ Sistema COMPLETO - 100% funcional  
-**Última actualización**: 11 de febrero de 2026
+**Última actualización**: 17 de febrero de 2026
 
-Sistema monolítico de gestión integral para casa de repuestos de motos con control de inventario, ventas, clientes, compras y reportes.
+Sistema integral para casa de repuestos de motos: inventario, ventas (POS), clientes, compras, reportes, configuración, devoluciones. Backend Django + Frontend React (Vite). Incluye instalador automático en Windows (`.bat`) y soporte para SQLite en desarrollo.
 
 ---
 
@@ -59,9 +59,9 @@ Todos los módulos planificados han sido implementados y probados exitosamente.
 ## 🛠 STACK TECNOLÓGICO
 
 ### Backend
-- **Framework**: Django 5.0+
+- **Framework**: Django 5.1+
 - **API**: Django REST Framework
-- **Base de datos**: PostgreSQL 15+
+- **Base de datos**: SQLite (desarrollo) / PostgreSQL (producción, opcional)
 - **ORM**: Django ORM
 - **Autenticación**: JWT (Simple JWT)
 - **Migraciones**: Django Migrations
@@ -78,8 +78,9 @@ Todos los módulos planificados han sido implementados y probados exitosamente.
 ### Utilidades
 - **Excel**: openpyxl (importación)
 - **PDF**: ReportLab (generación de PDFs)
-- **Tickets**: python-escpos (impresión térmica)
-- **Validaciones**: Django Validators + Yup (frontend)
+- **Tickets**: Vista previa e impresión térmica (formato casa de repuestos)
+- **Validaciones**: Django Validators + React Hook Form (frontend)
+- **Pagos con tarjeta**: Integración Clover POS (opcional)
 
 ### Despliegue (Preparado para futuro)
 - **Servidor**: Gunicorn + Nginx
@@ -201,9 +202,13 @@ casa-repuestos/
 │   ├── package.json
 │   └── vite.config.js
 │
-├── docker-compose.yml            # PostgreSQL + Aplicación
+├── instalar_todo.bat             # Instalador automático (Windows): Python, Node, venv, pip, npm, migraciones
+├── iniciar_sistema.bat           # Inicia backend + frontend en dos ventanas
+├── Sistema_Avila.ipynb           # Notebook Jupyter con lógica del backend (modelos, búsqueda, reportes)
+├── docker-compose.yml            # PostgreSQL + Aplicación (opcional)
 ├── .env.example                  # Variables de entorno
 ├── .gitignore
+├── docs/                         # ARQUITECTURA.md, guías AFIP, Excel, etc.
 └── README.md                     # Este archivo
 ```
 
@@ -701,80 +706,93 @@ DetalleDevolucion:
 - [x] **Módulo 1: Usuarios y Autenticación** ✅
 - [x] **Módulo 2: Gestión de Clientes** ✅
 - [x] **Módulo 3: Productos y Variantes** ✅
-- [ ] Módulo 4: Inventario y movimientos
-- [ ] Módulo 5: Ventas
-- [ ] Módulo 6: Compras
-- [ ] Módulo 7: Reportes
-- [ ] Módulo 8: Configuración
-- [ ] Módulo 9: Devoluciones
+- [x] **Módulo 4: Inventario y movimientos** ✅
+- [x] **Módulo 5: Ventas (POS)** ✅
+- [x] **Módulo 6: Compras** ✅
+- [x] **Módulo 7: Reportes** ✅
+- [x] **Módulo 8: Configuración** ✅
+- [x] **Módulo 9: Devoluciones** ✅
 
-### 🚧 En progreso
-- Ninguno actualmente
-
-### 📅 Pendiente
-- Módulos 4 al 9
-
-### ⏭️ Próximo paso
-**MÓDULO 4: Inventario y Movimientos de Stock**
+### Mejoras recientes (febrero 2026)
+- **Instalación en Windows**: `instalar_todo.bat` instala Python (o vía winget), Node, venv, pip, npm, migraciones y configuración inicial. `iniciar_sistema.bat` arranca backend y frontend.
+- **Búsqueda de productos**: Criterio unificado en Productos, POS y Registrar compra: debounce 200 ms, búsqueda al salir del campo (onBlur), cancelación de peticiones anteriores. Backend: atajo por código exacto para respuestas casi instantáneas.
+- **Ticket térmico**: Rediseño tipo casa de repuestos (encabezado, código por ítem, totales, pie). Componente: `frontend/src/components/TicketTermico.jsx`.
+- **POS**: Modal de selección de cliente (listado + búsqueda + “Agregar cliente”) en lugar de ir directo a crear. Integración opcional con Clover para pagos con tarjeta.
+- **Inventario**: API de stock estable (serializers defensivos, índices). Gráficos en Reportes con contenedores de tamaño mínimo para evitar avisos de Recharts.
+- **Detalle de venta**: Soporte tema oscuro y formato numérico seguro cuando la API devuelve strings.
 
 ---
 
 ## 💻 INSTALACIÓN Y CONFIGURACIÓN
 
 ### Requisitos previos
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 15+
-- Git
+- **Python 3.11+** (en Windows se puede instalar vía winget si falta)
+- **Node.js 18+** (LTS recomendado)
+- **Git** (opcional, para clonar)
+- Base de datos: **SQLite** por defecto en desarrollo (no requiere instalación). Opcional: PostgreSQL para producción.
 
-### 1. Clonar repositorio
+---
+
+### Instalación rápida en Windows (recomendada)
+
+1. Abrir la carpeta del proyecto (donde está `instalar_todo.bat`).
+2. Ejecutar **`instalar_todo.bat`** (doble clic).
+   - Crea el entorno virtual en `backend\venv`.
+   - Instala dependencias Python (`requirements.txt`).
+   - Instala dependencias del frontend (`npm install`).
+   - Aplica migraciones (base SQLite en `backend\db.sqlite3`).
+   - Ejecuta la configuración inicial si existe.
+   - Si Python o Node no están instalados, intenta instalarlos con **winget**; si falla, indica los enlaces de descarga.
+3. Para iniciar el sistema, ejecutar **`iniciar_sistema.bat`**.
+   - Se abren dos ventanas: backend (http://127.0.0.1:8000) y frontend (http://localhost:5173).
+4. Abrir el navegador en **http://localhost:5173** y hacer login (crear superusuario si es la primera vez: `cd backend`, `venv\Scripts\activate`, `python manage.py createsuperuser`).
+
+---
+
+### Instalación manual (todos los sistemas)
+
+#### 1. Clonar o abrir el proyecto
 ```bash
-git clone <repo-url>
-cd casa-repuestos
+cd Avila   # o la ruta del proyecto
 ```
 
-### 2. Configurar Backend
+#### 2. Backend
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/Mac
 pip install -r requirements.txt
 ```
 
-### 3. Configurar variables de entorno
+#### 3. Base de datos (SQLite por defecto)
 ```bash
-cp .env.example .env
-# Editar .env con tus credenciales
-```
-
-### 4. Configurar base de datos
-```bash
-python manage.py makemigrations
+set USE_SQLITE=True             # Windows (opcional, ya es el default)
+# export USE_SQLITE=True       # Linux/Mac
 python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 5. Configurar Frontend
+#### 4. Frontend
 ```bash
 cd ../frontend
 npm install
 ```
 
-### 6. Ejecutar desarrollo
+#### 5. Ejecutar
 ```bash
 # Terminal 1 - Backend
-cd backend
-python manage.py runserver
+cd backend && venv\Scripts\activate && python manage.py runserver
 
 # Terminal 2 - Frontend
-cd frontend
-npm run dev
+cd frontend && npm run dev
 ```
 
-### 7. Acceder
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000/api
-- Admin Django: http://localhost:8000/admin
+#### 6. Acceder
+- **Frontend**: http://localhost:5173  
+- **Backend API**: http://localhost:8000/api  
+- **Admin Django**: http://localhost:8000/admin  
+- Documentación del proyecto: `docs/ARQUITECTURA.md`
 
 ---
 
@@ -872,20 +890,13 @@ El sistema se considera **MVP completo** cuando cumple TODOS estos requisitos:
 
 ---
 
-## 🎯 PRÓXIMOS PASOS
+## 🎯 MANTENIMIENTO Y PRÓXIMOS PASOS
 
-1. **Completar Etapa 0**: Setup inicial del proyecto
-2. **Módulo 1**: Implementar autenticación
-3. **Módulo 2**: Implementar gestión de clientes
-4. **Módulo 3**: Implementar productos y variantes
-5. **Prueba piloto**: Importar 100 productos reales
-6. **Módulo 4**: Implementar inventario
-7. **Módulo 5**: Implementar ventas (核心)
-8. **Testing**: Validar flujo completo de venta
-9. **Módulos 6-9**: Completar funcionalidades restantes
-10. **Importación masiva**: Cargar 6000 productos
-11. **Testing final**: Validar criterios de aceptación MVP
-12. **Puesta en producción**: Día 1 operativo
+- **Sistema en producción**: Los 9 módulos están completos. Uso diario: ejecutar `iniciar_sistema.bat` (Windows) o iniciar backend y frontend manualmente.
+- **Usuario administrador**: `python manage.py createsuperuser` (desde `backend` con el venv activado).
+- **Backup**: Copiar `backend/db.sqlite3` (o hacer dump de PostgreSQL si se usa).
+- **Actualizar dependencias**: `pip install -r backend/requirements.txt` y `npm install` en `frontend`. Luego volver a ejecutar migraciones si hubo cambios en modelos.
+- **Documentación técnica**: Ver `docs/ARQUITECTURA.md` para ubicar APIs, páginas y módulos. Integración Clover: `docs/INTEGRACION_CLOVER.md` si aplica.
 
 ---
 
@@ -895,9 +906,9 @@ El sistema se considera **MVP completo** cuando cumple TODOS estos requisitos:
 
 | Sección | URL | Descripción |
 |---------|-----|-------------|
-| **Dashboard** | `/` | Panel principal con métricas |
+| **POS** | `/` | Punto de venta (pantalla principal) |
 | **Ventas** | `/ventas` | Historial de ventas |
-| **POS** | `/ventas/nueva` | Punto de venta |
+| **Dashboard** | Según rutas | Métricas y accesos rápidos |
 | **Productos** | `/productos` | Gestión de productos |
 | **Inventario** | `/inventario` | Control de stock |
 | **Compras** | `/compras` | Gestión de compras |
@@ -983,15 +994,22 @@ Todas las acciones críticas registran:
 
 ---
 
+## 📚 DOCUMENTACIÓN ADICIONAL
+
+- **`docs/ARQUITECTURA.md`**: Mapa del proyecto (backend, frontend, rutas API, archivos clave).
+- **`INSTALL.md`**: Guía de instalación detallada y requisitos.
+- **`Sistema_Avila.ipynb`**: Notebook Jupyter con Django, modelos, búsqueda de productos e inventario (para pruebas o análisis).
+- **Clover (pagos con tarjeta)**: `docs/INTEGRACION_CLOVER.md` si se usa POSnet Clover.
+
 ## 📞 SOPORTE
 
-Para dudas o problemas durante el desarrollo, consultar:
+Para dudas o problemas durante el desarrollo:
 - Documentación Django: https://docs.djangoproject.com/
 - Documentación DRF: https://www.django-rest-framework.org/
 - Documentación React: https://react.dev/
 
 ---
 
-**Última actualización**: 11 de febrero de 2026  
-**Versión**: 0.6.0 (Módulo 5 completado)  
-**Estado**: ✅ Ventas completo - Listo para MÓDULO 6
+**Última actualización**: 17 de febrero de 2026  
+**Versión**: 1.0.0 (9 módulos completados)  
+**Estado**: ✅ Sistema completo. Instalación: `instalar_todo.bat` → `iniciar_sistema.bat`
