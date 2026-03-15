@@ -1,3 +1,4 @@
+import traceback
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -5,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import logout
+from django.conf import settings
 
 from .models import Usuario
 from .serializers import (
@@ -31,36 +33,34 @@ class AuthViewSet(viewsets.GenericViewSet):
         Login de usuario.
         Retorna tokens JWT y información del usuario.
         """
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = serializer.validated_data['user']
-
         try:
+            serializer = LoginSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
+
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email or '',
+                'first_name': user.first_name or '',
+                'last_name': user.last_name or '',
+                'rol': getattr(user, 'rol', 'CAJERO'),
+                'es_administrador': getattr(user, 'es_administrador', user.is_superuser),
+                'es_cajero': getattr(user, 'es_cajero', True),
+            }
+
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': user_data,
+            }, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response(
-                {'detail': f'Error al generar token: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        # Valores seguros para JSON (evitar None en email, rol por migraciones viejas)
-        user_data = {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email or '',
-            'first_name': user.first_name or '',
-            'last_name': user.last_name or '',
-            'rol': getattr(user, 'rol', 'CAJERO'),
-            'es_administrador': getattr(user, 'es_administrador', user.is_superuser),
-            'es_cajero': getattr(user, 'es_cajero', True),
-        }
-
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': user_data,
-        }, status=status.HTTP_200_OK)
+            body = {'detail': str(e)}
+            if getattr(settings, 'DEBUG', False):
+                body['traceback'] = traceback.format_exc()
+            return Response(body, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def logout(self, request):

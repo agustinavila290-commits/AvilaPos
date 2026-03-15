@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       const data = error.response?.data;
-      const message = (Array.isArray(data?.non_field_errors) && data.non_field_errors[0])
-        || (typeof data?.detail === 'string' && data.detail)
+      const message = (typeof data?.detail === 'string' && data.detail)
+        || (Array.isArray(data?.non_field_errors) && data.non_field_errors[0])
         || (Array.isArray(data?.detail) && data.detail[0])
         || (data?.username && (Array.isArray(data.username) ? data.username[0] : data.username))
         || (data?.password && (Array.isArray(data.password) ? data.password[0] : data.password))
