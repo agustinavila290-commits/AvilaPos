@@ -127,6 +127,20 @@ El script usa `/var/www/AvilaPos`. Para otro directorio:
 APP_DIR=/ruta/alternativa ./setup_servidor_ubuntu.sh
 ```
 
+## Actualizar solo el frontend
+
+Después de hacer cambios en el frontend y `git push`, en el servidor ejecutá:
+
+```bash
+cd /var/www/AvilaPos
+sed -i 's/\r$//' scripts/actualizar_frontend.sh   # solo si copiaste desde Windows
+bash scripts/actualizar_frontend.sh
+```
+
+Si el repo está en `/root/AvilaPos`: `APP_DIR=/root/AvilaPos bash scripts/actualizar_frontend.sh`
+
+El script hace `git pull` y `npm run build` en `frontend/`. No hace falta reiniciar el backend.
+
 ## Comandos útiles en el servidor
 
 ```bash
