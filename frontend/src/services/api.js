@@ -1,8 +1,11 @@
 import axios from 'axios';
 
-// Configuración base de Axios
+// En Vercel/producción usar VITE_API_URL (ej: https://tu-backend.railway.app/api)
+// En desarrollo sin variable usa /api (proxy de Vite o mismo origen)
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,7 +38,8 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken) {
-          const response = await axios.post('/api/auth/token/refresh/', {
+          const refreshUrl = baseURL.endsWith('/') ? `${baseURL}auth/token/refresh/` : `${baseURL}/auth/token/refresh/`;
+          const response = await axios.post(refreshUrl, {
             refresh: refreshToken,
           });
 

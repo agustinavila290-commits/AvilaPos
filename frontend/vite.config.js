@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -16,7 +18,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // Usar IP local del servidor si está disponible, sino localhost
+        target: process.env.VITE_API_HOST || 'http://localhost:8000',
         changeOrigin: true,
       },
     },

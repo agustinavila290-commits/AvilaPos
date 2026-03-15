@@ -2,15 +2,15 @@
  * Página de detalle de venta - Soft UI
  */
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getVenta, anularVenta } from '../services/ventasService';
+import facturacionService from '../services/facturacionService';
 import { useAuth } from '../hooks/useAuth';
 import TicketTermico from '../components/TicketTermico';
 import SoftCard from '../components/SoftCard';
 
 export default function VentaDetalle() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { isAdmin } = useAuth();
   
   const [venta, setVenta] = useState(null);
@@ -24,6 +24,7 @@ export default function VentaDetalle() {
   
   // Impresión
   const [mostrarTicket, setMostrarTicket] = useState(false);
+  const [facturando, setFacturando] = useState(false);
 
   useEffect(() => {
     cargarVenta();
@@ -91,6 +92,72 @@ export default function VentaDetalle() {
     }
   };
 
+  const handleEmitirFactura = async () => {
+    if (!venta) return;
+    if (!confirm('¿Emitir factura AFIP para esta venta?')) return;
+
+    try {
+      setFacturando(true);
+      setError('');
+
+      // Tomar el primer punto de venta disponible
+      const puntos = await facturacionService.listarPuntosVenta();
+      if (!puntos || puntos.length === 0) {
+        setError('No hay puntos de venta configurados para facturación.');
+        return;
+      }
+      const punto = puntos[0];
+
+      // Armar datos básicos de cliente
+      const cliente = venta.cliente_info || {};
+      const condicionIva = cliente.condicion_iva || 'CF';
+      const tipoComprobante = condicionIva === 'RI' ? 'FA' : 'FB';
+
+      const facturaData = {
+        tipo_comprobante: tipoComprobante,
+        punto_venta: punto.id,
+        cliente: venta.cliente || null,
+        cliente_razon_social: cliente.nombre_completo || venta.cliente_nombre || 'Consumidor Final',
+        cliente_cuit: cliente.cuit || cliente.dni || '0',
+        cliente_condicion_iva: condicionIva,
+        cliente_domicilio: cliente.direccion || '',
+        venta: venta.id,
+        otros_tributos: 0,
+        observaciones: `Venta #${venta.numero}`,
+        items: venta.detalles?.map((d, idx) => ({
+          orden: idx + 1,
+          codigo: d.codigo,
+          descripcion: d.nombre_producto,
+          cantidad: d.cantidad,
+          precio_unitario: d.precio_unitario,
+          alicuota_iva: '21'
+        })) || []
+      };
+
+      const factura = await facturacionService.crearFactura(facturaData);
+      const respAut = await facturacionService.autorizarFactura(factura.id);
+      const facturaAut = respAut.factura || factura;
+
+      // Descargar PDF
+      try {
+        const pdfResp = await facturacionService.generarPdfFactura(facturaAut.id);
+        const blob = new Blob([pdfResp.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } catch {
+        // Si falla el PDF, al menos dejamos creada/autorizada la factura
+      }
+
+      // Refrescar venta por si en el futuro se asocia factura
+      await cargarVenta();
+    } catch (err) {
+      console.error('Error al emitir factura:', err);
+      setError(err.response?.data?.error || 'Error al emitir la factura');
+    } finally {
+      setFacturando(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -128,6 +195,15 @@ export default function VentaDetalle() {
           >
             🖨️ Imprimir Ticket
           </button>
+          {venta.estado_display === 'Completada' && (
+            <button
+              onClick={handleEmitirFactura}
+              disabled={facturando}
+              className="px-3 py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-lg sm:rounded-xl shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all duration-200 font-semibold text-sm sm:text-base flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {facturando ? 'Emitiendo factura...' : '🧾 Emitir Factura AFIP'}
+            </button>
+          )}
           {isAdmin() && venta.estado_display === 'Completada' && (
             <button
               onClick={() => setMostrarAnulacion(!mostrarAnulacion)}

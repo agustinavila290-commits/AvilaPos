@@ -9,14 +9,34 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar variables de entorno desde .env si existe
+# IMPORTANTE: Las variables del sistema (establecidas por scripts .bat) tienen prioridad sobre .env
+try:
+    from dotenv import load_dotenv
+    env_path = BASE_DIR.parent.parent / '.env'  # Avila/.env
+    if env_path.exists():
+        # override=False: las variables del sistema NO se sobrescriben por .env
+        # Esto permite que los scripts .bat establezcan ALLOWED_HOSTS=* y USE_SQLITE=True
+        load_dotenv(env_path, override=False)
+except ImportError:
+    pass  # python-dotenv no instalado, usar solo variables de entorno del sistema
+except Exception as e:
+    print(f"[WARNING] Error al cargar .env: {e}")
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-# En desarrollo permite acceso desde la red local (celular, etc.)
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,*').split(',')
+# En desarrollo: permitir acceso desde cualquier host (red local, etc.)
+# En producción cambiar esto a dominios específicos
+if DEBUG:
+    ALLOWED_HOSTS = ['*']  # Desarrollo: permitir cualquier IP/host
+else:
+    # Producción: solo hosts específicos
+    allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
 
 # Application definition
 INSTALLED_APPS = [
@@ -43,9 +63,12 @@ INSTALLED_APPS = [
     'apps.reportes',
     'apps.configuracion',
     'apps.devoluciones',
+    'apps.cuenta_corriente',
     'apps.sistema',
     'apps.facturacion',
     'apps.clover',
+    'apps.woocommerce',
+    'apps.tienda',
 ]
 
 MIDDLEWARE = [
@@ -84,8 +107,27 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Para desarrollo: usa SQLite (simple, sin instalación)
 # Para producción: cambia a PostgreSQL
 
-USE_SQLITE = os.environ.get('USE_SQLITE', 'True') == 'True'
+# Leer USE_SQLITE de variables de entorno (puede venir del .env o del sistema)
+# IMPORTANTE: Por defecto usar SQLite (True) a menos que se especifique explícitamente False
+USE_SQLITE_ENV = os.environ.get('USE_SQLITE', 'True')
+# Si viene como string vacío o None, usar True por defecto
+if not USE_SQLITE_ENV or USE_SQLITE_ENV.strip() == '':
+    USE_SQLITE_ENV = 'True'
+# Convertir a booleano: acepta True, true, 1, yes, on (cualquier otro valor = False)
+# Si explícitamente dice False, usar PostgreSQL; sino usar SQLite
+USE_SQLITE_STR = str(USE_SQLITE_ENV).strip().lower()
+USE_SQLITE = USE_SQLITE_STR not in ('false', '0', 'no', 'off')  # Invertido: True por defecto
 
+# Debug: mostrar qué base de datos se está usando (solo en desarrollo)
+if DEBUG:
+    print(f"[DEBUG] USE_SQLITE_ENV={USE_SQLITE_ENV!r}, USE_SQLITE={USE_SQLITE}")
+    print(f"[DEBUG] DATABASE será: {'SQLite' if USE_SQLITE else 'PostgreSQL'}")
+    # Verificar que realmente se está usando SQLite
+    if USE_SQLITE:
+        print(f"[DEBUG] Forzando SQLite - verificando configuración...")
+
+# FORZAR SQLite por defecto si no se especifica explícitamente False
+# Esto evita problemas si la variable de entorno no se lee correctamente
 if USE_SQLITE:
     # SQLite para desarrollo
     DATABASES = {
@@ -94,6 +136,8 @@ if USE_SQLITE:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+    if DEBUG:
+        print(f"[OK] Usando SQLite: {BASE_DIR / 'db.sqlite3'}")
 else:
     # PostgreSQL para producción
     DATABASES = {
@@ -181,9 +225,10 @@ SIMPLE_JWT = {
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:5174",  # avila-web (tienda pública)
     "http://localhost:3000",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5174",
 ]
 # Permitir acceso desde celular/tablet en la red local (ej. http://192.168.1.5:5173)
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -236,3 +281,7 @@ LOGGING = {
 
 # Crear directorio de logs si no existe
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# Configuración básica de Mercado Pago (tokens opcionales)
+MERCADOPAGO_ACCESS_TOKEN = os.environ.get('MERCADOPAGO_ACCESS_TOKEN', '')
+MERCADOPAGO_PUBLIC_KEY = os.environ.get('MERCADOPAGO_PUBLIC_KEY', '')

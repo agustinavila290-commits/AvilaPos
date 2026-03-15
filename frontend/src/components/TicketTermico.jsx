@@ -63,6 +63,28 @@ export default function TicketTermico({ venta, onClose }) {
   };
 
   const n = (x) => (x != null ? Number(x).toFixed(2) : '0.00');
+
+  // Construye la descripción del ítem SIN repetir la marca
+  const getDescripcionItem = (item, idx) => {
+    const varianteInfo = item.variante_info || {};
+    const productoNombre = varianteInfo.producto_nombre || '';
+    const varianteNombre = varianteInfo.nombre_variante || item.nombre_variante || '';
+
+    if (productoNombre && varianteNombre) {
+      return `${productoNombre} - ${varianteNombre}`;
+    }
+
+    if (productoNombre) {
+      return productoNombre;
+    }
+
+    if (varianteNombre) {
+      return varianteNombre;
+    }
+
+    // Fallback: usar lo que venía del backend, pero sin tocar nada más
+    return item.nombre_producto || `Item ${idx + 1}`;
+  };
   const numeroVenta = venta?.numero ?? venta?.numero_venta ?? '--';
   const clienteNombre = venta?.cliente_nombre || 'Consumidor final';
   const clienteDni = venta?.cliente_info?.dni || venta?.cliente_dni || '';
@@ -115,7 +137,7 @@ export default function TicketTermico({ venta, onClose }) {
             {detalles.map((item, idx) => (
               <div key={idx} className="row-items">
                 <div style={{ flex: '1', minWidth: 0 }}>
-                  <div className="item-desc bold">{item.nombre_producto || item.variante_nombre || `Item ${idx + 1}`}</div>
+                  <div className="item-desc bold">{getDescripcionItem(item, idx)}</div>
                   <div className="item-cod">Cód: {item.codigo || '—'}</div>
                 </div>
                 <div className="item-nums">

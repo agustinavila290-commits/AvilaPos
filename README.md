@@ -91,125 +91,92 @@ Todos los módulos planificados han sido implementados y probados exitosamente.
 
 ## 📁 ESTRUCTURA DEL PROYECTO
 
+> **Nota**: La raíz del proyecto está simplificada; todo lo auxiliar (scripts, historial de cambios, etc.) está ordenado en subcarpetas.
+
 ```
-casa-repuestos/
+Avila/
 │
-├── backend/                      # Proyecto Django
+├── backend/                      # Proyecto Django (API POS + admin)
 │   ├── backend/                  # Configuración principal
 │   │   ├── settings.py
 │   │   ├── urls.py
-│   │   └── wsgi.py
+│   │   └── wsgi.py / asgi.py
 │   │
-│   ├── apps/                     # Aplicaciones Django
-│   │   ├── usuarios/            # ✅ MÓDULO 1
-│   │   │   ├── models.py
-│   │   │   ├── serializers.py
-│   │   │   ├── views.py
-│   │   │   ├── permissions.py
-│   │   │   └── urls.py
-│   │   │
-│   │   ├── clientes/            # ✅ MÓDULO 2
-│   │   │   ├── models.py
-│   │   │   ├── serializers.py
-│   │   │   ├── views.py
-│   │   │   └── urls.py
-│   │   │
-│   │   ├── productos/           # ✅ MÓDULO 3
-│   │   │   ├── models.py
-│   │   │   ├── serializers.py
-│   │   │   ├── views.py
-│   │   │   └── urls.py
-│   │   │
-│   │   ├── inventario/          # ✅ MÓDULO 4
-│   │   │   ├── models.py
-│   │   │   ├── serializers.py
-│   │   │   ├── views.py
-│   │   │   └── urls.py
-│   │   │
-│   │   ├── ventas/              # ✅ MÓDULO 5
-│   │   │   ├── models.py
-│   │   │   ├── serializers.py
-│   │   │   ├── views.py
-│   │   │   ├── signals.py       # Descuento automático de stock
-│   │   │   └── urls.py
-│   │   │
-│   │   ├── compras/             # ✅ MÓDULO 6
-│   │   │   ├── models.py
-│   │   │   ├── serializers.py
-│   │   │   ├── views.py
-│   │   │   └── urls.py
-│   │   │
-│   │   ├── reportes/            # ✅ MÓDULO 7
-│   │   │   ├── views.py
-│   │   │   ├── generators.py    # PDFs y tickets
-│   │   │   └── urls.py
-│   │   │
-│   │   └── configuracion/       # ✅ MÓDULO 8
-│   │       ├── models.py
-│   │       ├── serializers.py
-│   │       ├── views.py
-│   │       └── urls.py
+│   ├── apps/                     # Apps Django por dominio
+│   │   ├── usuarios/            # Auth, roles, JWT
+│   │   ├── clientes/            # Gestión de clientes
+│   │   ├── productos/           # Productos, variantes, búsqueda, Excel
+│   │   ├── inventario/          # Stock, depósitos, movimientos
+│   │   ├── ventas/              # POS, ventas, tickets
+│   │   ├── compras/             # Compras y proveedores
+│   │   ├── reportes/            # Endpoints de reportes
+│   │   ├── configuracion/       # Parámetros del sistema
+│   │   ├── devoluciones/        # Devoluciones y notas de crédito
+│   │   ├── cuenta_corriente/    # Tickets en cuenta corriente
+│   │   ├── sistema/             # Backups, auditoría, exportaciones
+│   │   ├── facturacion/         # AFIP y facturación electrónica
+│   │   ├── clover/              # Pagos con tarjeta Clover
+│   │   ├── woocommerce/         # Integración con tienda web
+│   │   └── tienda/              # API tienda web propia
 │   │
-│   ├── utils/                    # Utilidades compartidas
-│   │   ├── permissions.py
-│   │   ├── validators.py
-│   │   ├── exceptions.py
-│   │   └── audit.py             # Sistema de auditoría
-│   │
+│   ├── scripts/                 # Scripts backend específicos
 │   ├── manage.py
 │   └── requirements.txt
 │
-├── frontend/                     # Aplicación React
+├── frontend/                     # POS (React + Vite + Electron)
 │   ├── src/
-│   │   ├── components/          # Componentes reutilizables
-│   │   │   ├── common/          # Botones, inputs, modals
-│   │   │   ├── layout/          # Header, sidebar, footer
-│   │   │   └── features/        # Componentes por módulo
-│   │   │
-│   │   ├── pages/               # Páginas principales
-│   │   │   ├── Login.jsx
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── Ventas/
-│   │   │   ├── Productos/
-│   │   │   ├── Clientes/
-│   │   │   ├── Compras/
-│   │   │   └── Reportes/
-│   │   │
-│   │   ├── hooks/               # Custom hooks
-│   │   │   ├── useAuth.js
-│   │   │   ├── usePermissions.js
-│   │   │   └── useApi.js
-│   │   │
-│   │   ├── services/            # Llamadas a API
-│   │   │   ├── api.js
-│   │   │   ├── authService.js
-│   │   │   ├── ventasService.js
-│   │   │   └── productosService.js
-│   │   │
-│   │   ├── context/             # Context providers
-│   │   │   ├── AuthContext.jsx
-│   │   │   └── ConfigContext.jsx
-│   │   │
-│   │   ├── utils/               # Utilidades
-│   │   │   ├── formatters.js
-│   │   │   ├── validators.js
-│   │   │   └── constants.js
-│   │   │
+│   │   ├── pages/               # Páginas del POS (ventas, productos, etc.)
+│   │   ├── components/          # Componentes UI (layout, ticket, modales...)
+│   │   ├── services/            # Llamadas a /api (auth, ventas, inventario, etc.)
+│   │   ├── context/             # Auth, tema, etc.
+│   │   ├── utils/               # Utilidades (ej. uppercaseInput)
 │   │   ├── App.jsx
 │   │   └── main.jsx
 │   │
+│   ├── electron/                # Integración Electron (app de escritorio)
 │   ├── public/
 │   ├── package.json
 │   └── vite.config.js
 │
-├── instalar_todo.bat             # Instalador automático (Windows): Python, Node, venv, pip, npm, migraciones
-├── iniciar_sistema.bat           # Inicia backend + frontend en dos ventanas
-├── Sistema_Avila.ipynb           # Notebook Jupyter con lógica del backend (modelos, búsqueda, reportes)
-├── docker-compose.yml            # PostgreSQL + Aplicación (opcional)
-├── .env.example                  # Variables de entorno
+├── avila-web/                   # Sitio y tienda web pública
+│   ├── src/
+│   │   ├── pages/               # Home, catálogo, producto, carrito, checkout, legales...
+│   │   ├── components/          # Layout, tarjetas de producto, mapas, etc.
+│   │   ├── context/             # Auth, carrito
+│   │   ├── services/            # API tienda / WooCommerce
+│   │   └── styles/
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
+│
+├── docs/                        # Documentación del sistema
+│   ├── ARQUITECTURA.md          # Mapa del proyecto (backend, frontend, rutas API)
+│   ├── INSTALL.md               # Guía de instalación detallada
+│   ├── INTEGRACION_CLOVER.md    # Pagos con tarjeta (Clover)
+│   ├── ...                      # AFIP, Excel, POS vs web, etc.
+│   └── historial/               # Historial de cambios internos (.md de rediseños, compactos, etc.)
+│
+├── scripts/                     # Scripts de instalación y utilidades (Windows / PowerShell / bash)
+│   ├── iniciar_sistema.bat      # Inicia backend + frontend POS (antes estaba en la raíz)
+│   ├── iniciar_sistema.ps1      # Variante PowerShell
+│   ├── iniciar_sistema_red.bat  # Inicio POS en red (IP)
+│   ├── iniciar_pos_servicio.bat # Inicio como servicio POS
+│   ├── instalar_todo.bat        # Instalación automática en Windows
+│   ├── iniciar_electron.bat     # Arranca versión Electron del POS
+│   ├── ver_ip_local.bat         # Muestra IP local para red
+│   ├── crear_admin.bat          # Crea usuario admin rápido
+│   ├── resetear_admin.bat       # Resetea credenciales admin
+│   ├── setup.sh / setup.ps1     # Setup para otros entornos
+│   └── reinstall-backend.ps1    # Reinstalar dependencias backend
+│
+├── docker-compose.yml           # Orquestación Docker (app + PostgreSQL)
+├── .env.example                 # Variables de entorno de ejemplo
+├── .env                         # Variables de entorno locales (no se commitea)
 ├── .gitignore
-├── docs/                         # ARQUITECTURA.md, guías AFIP, Excel, etc.
-└── README.md                     # Este archivo
+├── .gitattributes
+├── iniciar_sistema.bat          # Wrapper pequeño que llama a scripts/iniciar_sistema.bat
+├── INSTALL.md                   # Guía de instalación (duplicada en docs/)
+└── README.md                    # Este archivo
 ```
 
 ---

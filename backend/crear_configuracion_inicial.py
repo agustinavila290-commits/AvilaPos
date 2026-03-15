@@ -155,6 +155,40 @@ def crear_configuraciones():
             'categoria': 'SISTEMA',
             'es_editable': True
         },
+
+        # INTEGRACIÓN WOOCOMMERCE (tienda web)
+        {
+            'clave': 'WOOCOMMERCE_API_KEY',
+            'valor': '',
+            'tipo_dato': Configuracion.TipoDato.STRING,
+            'descripcion': 'API Key para sincronización con WooCommerce (header X-API-Key). Generar una clave segura y configurarla aquí y en el script de sync.',
+            'categoria': 'INTEGRACION',
+            'es_editable': True
+        },
+        {
+            'clave': 'WOOCOMMERCE_URL',
+            'valor': '',
+            'tipo_dato': Configuracion.TipoDato.STRING,
+            'descripcion': 'URL base de la tienda WooCommerce (ej. https://avilamotorepuesto.com.ar). Sin barra final.',
+            'categoria': 'INTEGRACION',
+            'es_editable': True
+        },
+        {
+            'clave': 'WOOCOMMERCE_CONSUMER_KEY',
+            'valor': '',
+            'tipo_dato': Configuracion.TipoDato.STRING,
+            'descripcion': 'Consumer key de la API WooCommerce (WooCommerce → Ajustes → Avanzado → REST API).',
+            'categoria': 'INTEGRACION',
+            'es_editable': True
+        },
+        {
+            'clave': 'WOOCOMMERCE_CONSUMER_SECRET',
+            'valor': '',
+            'tipo_dato': Configuracion.TipoDato.STRING,
+            'descripcion': 'Consumer secret de la API WooCommerce.',
+            'categoria': 'INTEGRACION',
+            'es_editable': True
+        },
     ]
     
     creados = 0

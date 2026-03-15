@@ -9,8 +9,7 @@ import {
   listarArchivosBackup,
   restaurarBackup,
   eliminarBackup,
-  getEstadisticasBackup,
-  descargarBackup
+  getEstadisticasBackup
 } from '../services/sistemaService';
 
 export default function Backups() {

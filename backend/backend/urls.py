@@ -20,9 +20,12 @@ urlpatterns = [
     path('api/reportes/', include('apps.reportes.urls')),
     path('api/configuracion/', include('apps.configuracion.urls')),
     path('api/devoluciones/', include('apps.devoluciones.urls')),
+    path('api/cuenta-corriente/', include('apps.cuenta_corriente.urls')),
     path('api/sistema/', include('apps.sistema.urls')),
     path('api/facturacion/', include('apps.facturacion.urls')),
     path('api/clover/', include('apps.clover.urls')),
+    path('api/woocommerce/', include('apps.woocommerce.urls')),
+    path('api/tienda/', include('apps.tienda.urls')),
 ]
 
 # Servir archivos media en desarrollo

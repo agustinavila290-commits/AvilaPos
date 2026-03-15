@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createCompra, getProveedores, createProveedor, subirAdjuntoFactura } from '../services/comprasService';
-import { getDepositos, getDepositoPrincipal } from '../services/inventarioService';
+import { getDepositoPrincipal } from '../services/inventarioService';
 import productosService from '../services/productosService';
 import SoftCard from '../components/SoftCard';
 

@@ -101,7 +101,7 @@ export default function SeleccionarClienteModal({ isOpen, onClose, onClienteSele
                   <div className="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                     {searchTerm.trim() ? 'No hay clientes que coincidan con la búsqueda.' : 'No hay clientes cargados.'}
                     <br />
-                    <span className="text-green-600 dark:text-green-400 font-medium">Usá "Agregar cliente" para dar de alta uno nuevo.</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">Usá &quot;Agregar cliente&quot; para dar de alta uno nuevo.</span>
                   </div>
                 ) : (
                   <ul className="divide-y divide-gray-200 dark:divide-slate-600">

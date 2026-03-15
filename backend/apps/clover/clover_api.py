@@ -77,6 +77,15 @@ class CloverAPIClient:
         resp = self._request('POST', path, data)
         return resp.get('id')
 
+    def test_connection(self):
+        """
+        Verifica conectividad con Clover sin crear órdenes ni pagos.
+        GET al merchant valida credenciales y que el endpoint responda.
+        """
+        path = f'/v3/merchants/{self.merchant_id}'
+        self._request('GET', path)
+        return True
+
     def get_payment(self, payment_id):
         """Obtiene el estado actual de un pago."""
         path = f'/v3/merchants/{self.merchant_id}/payments/{payment_id}'

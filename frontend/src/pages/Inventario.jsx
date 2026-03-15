@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import SoftCard from '../components/SoftCard';
 
 export default function Inventario() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [stocks, setStocks] = useState([]);
   const [depositos, setDepositos] = useState([]);
   const [depositoSeleccionado, setDepositoSeleccionado] = useState('');

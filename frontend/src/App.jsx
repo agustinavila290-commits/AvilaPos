@@ -26,6 +26,9 @@ import Reportes from './pages/Reportes'
 import Configuracion from './pages/Configuracion'
 import Devoluciones from './pages/Devoluciones'
 import NuevaDevolucion from './pages/NuevaDevolucion'
+import CuentaCorriente from './pages/CuentaCorriente'
+import NuevoTicketCC from './pages/NuevoTicketCC'
+import TicketDetalle from './pages/TicketDetalle'
 import Backups from './pages/Backups'
 import AuditLogs from './pages/AuditLogs'
 
@@ -280,6 +283,38 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <NuevaDevolucion />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Cuenta corriente - tickets mecánicos */}
+          <Route
+            path="/cuenta-corriente"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CuentaCorriente />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cuenta-corriente/nuevo"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <NuevoTicketCC />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cuenta-corriente/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TicketDetalle />
                 </Layout>
               </ProtectedRoute>
             }

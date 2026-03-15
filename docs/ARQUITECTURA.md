@@ -2,6 +2,8 @@
 
 Este documento sirve como **índice del proyecto** para ubicar rápido cada funcionalidad (backend, frontend y docs). Útil para desarrolladores y para asistentes de código.
 
+**Nota:** Este repositorio es el **Sistema POS** (punto de venta y administración). El sitio público (avilamotorepuesto.com.ar: landing, legales, contacto y futura tienda online) está en un repositorio separado. Ver [docs/POS_VS_WEB.md](POS_VS_WEB.md).
+
 ---
 
 ## Raíz del proyecto
@@ -33,9 +35,11 @@ Avila/
 | `/api/reportes/` | **reportes** | Reportes, exportación | `apps/reportes/views.py` |
 | `/api/configuracion/` | **configuracion** | Empresa, depósito principal, parámetros | `apps/configuracion/views.py`, `models.py` |
 | `/api/devoluciones/` | **devoluciones** | Devoluciones, notas de crédito | `apps/devoluciones/views.py`, `models.py`, `services.py` |
+| `/api/cuenta-corriente/` | **cuenta_corriente** | Tickets cuenta corriente (agregar, devolver, abonar) | `apps/cuenta_corriente/views.py`, `models.py`, `services.py` |
 | `/api/sistema/` | **sistema** | Backup, auditoría, export Excel, WhatsApp | `apps/sistema/views.py`, `audit.py`, `backup_manager.py`, `excel_export.py`, `whatsapp.py` |
 | `/api/facturacion/` | **facturacion** | AFIP, facturación electrónica, PDF | `apps/facturacion/views.py`, `afip_service.py`, `pdf_generator.py` |
 | `/api/clover/` | **clover** | Pagos con tarjeta vía POSnet Clover | `apps/clover/views.py`, `services.py`, `clover_api.py` |
+| `/api/woocommerce/` | **woocommerce** | Integración tienda web: productos con stock, recibir pedidos | `apps/woocommerce/views.py`, `auth.py` |
 
 ### Módulos auxiliares dentro de una app
 
@@ -92,6 +96,7 @@ Avila/
 | `/backups` | `Backups.jsx` | Backups |
 | `/audit-logs` | `AuditLogs.jsx` | Auditoría |
 | `/devoluciones`, `/devoluciones/nueva` | `Devoluciones.jsx`, `NuevaDevolucion.jsx` | Devoluciones |
+| `/cuenta-corriente`, `/cuenta-corriente/nuevo`, `/cuenta-corriente/:id` | `CuentaCorriente.jsx`, `NuevoTicketCC.jsx`, `TicketDetalle.jsx` | Tickets cuenta corriente |
 
 ### Servicios (llamadas a la API)
 
@@ -109,6 +114,7 @@ Todos usan `frontend/src/services/api.js` (axios con baseURL `/api`). No duplica
 | `reportesService.js` | `/reportes/` | reportes |
 | `configuracionService.js` | `/configuracion/` | empresa, configuración |
 | `devolucionesService.js` | `/devoluciones/` | devoluciones |
+| `cuentaCorrienteService.js` | `/cuenta-corriente/` | tickets cuenta corriente |
 | `sistemaService.js` | `/sistema/` | backups, audit, export |
 | `cloverService.js` | `/clover/` | procesar pago Clover, config |
 
@@ -137,6 +143,7 @@ Todos usan `frontend/src/services/api.js` (axios con baseURL `/api`). No duplica
 | Documento | Contenido |
 |-----------|-----------|
 | `ARQUITECTURA.md` | Este índice (backend, frontend, rutas, servicios). |
+| `PROYECTO_CUENTA_CORRIENTE_TICKETS.md` | Plan de desarrollo: tickets a cuenta corriente (mecánicos, varios tickets por cliente, agregar/devolver, abonar). |
 | `FORMATO_EXCEL_PRODUCTOS.md` | Columnas requeridas para importar productos desde Excel. |
 | `PASOS_ACTIVAR_AFIP.md` | Pasos para activar facturación AFIP. |
 | `REVISION_SISTEMA_BASE_DATOS.md` | Convenciones de nombres y relaciones (stock, ventas, etc.). |
@@ -154,9 +161,11 @@ Todos usan `frontend/src/services/api.js` (axios con baseURL `/api`). No duplica
 - **Stock e inventario** → `backend/apps/inventario/`, `frontend/src/services/inventarioService.js`, páginas `Inventario.jsx`, `AjustarStock.jsx`, `Movimientos.jsx`.
 - **Clientes** → `backend/apps/clientes/`, `frontend/src/services/clientesService.js`, páginas `Clientes.jsx`, `ClienteForm.jsx`, `ClienteDetalle.jsx`.
 - **Devoluciones** → `backend/apps/devoluciones/`, `frontend/src/pages/Devoluciones.jsx`, `NuevaDevolucion.jsx`, `devolucionesService.js`.
+- **Cuenta corriente (tickets)** → `backend/apps/cuenta_corriente/`, `frontend/src/pages/CuentaCorriente.jsx`, `NuevoTicketCC.jsx`, `TicketDetalle.jsx`, `cuentaCorrienteService.js`.
 - **Reportes y export** → `backend/apps/reportes/`, `backend/apps/sistema/excel_export.py`, `frontend/src/pages/Reportes.jsx`.
 - **Configuración y sistema** → `backend/apps/configuracion/`, `backend/apps/sistema/`, `frontend/src/pages/Configuracion.jsx`, `Backups.jsx`, `AuditLogs.jsx`.
 - **AFIP / facturación** → `backend/apps/facturacion/`, `docs/PASOS_ACTIVAR_AFIP.md`.
 - **Clover (pagos con tarjeta)** → `backend/apps/clover/`, `docs/INTEGRACION_CLOVER.md`.
+- **WooCommerce (sync inventario con tienda web)** → `backend/apps/woocommerce/`, `apps/woocommerce/README.md`.
 
 Actualizar este documento cuando se agreguen nuevas apps, rutas o servicios.

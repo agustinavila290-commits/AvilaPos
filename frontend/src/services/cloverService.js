@@ -22,3 +22,13 @@ export async function getConfigClover() {
   const response = await api.get('/clover/config/');
   return response.data;
 }
+
+/**
+ * Prueba la conexión con Clover (endpoint, credenciales, red).
+ * No crea órdenes ni procesa pagos.
+ * @returns {Promise<{ success: boolean, mensaje: string }>}
+ */
+export async function probarConexionClover() {
+  const response = await api.post('/clover/probar-conexion/');
+  return response.data;
+}

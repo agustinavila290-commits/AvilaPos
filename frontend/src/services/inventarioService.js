@@ -9,7 +9,9 @@ const BASE_URL = '/inventario';
 
 export const getDepositos = async () => {
   const response = await api.get(`${BASE_URL}/depositos/`);
-  return response.data;
+  const data = response.data;
+  // La API devuelve { results: [...] } paginado; normalizar a array
+  return Array.isArray(data) ? data : (data?.results ?? []);
 };
 
 export const getDepositoPrincipal = async () => {

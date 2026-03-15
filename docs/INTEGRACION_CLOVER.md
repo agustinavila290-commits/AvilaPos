@@ -90,6 +90,10 @@ Si no hay ninguna configuración Clover activa, al cobrar con Tarjeta el sistema
 - **GET /api/clover/config/**  
   Requiere autenticación. Devuelve `{ "activo": true/false, "nombre": "..." }` según exista configuración Clover activa.
 
+- **POST /api/clover/probar-conexion/**  
+  Requiere autenticación. Prueba la conexión con Clover (endpoint, credenciales, red) sin crear órdenes ni procesar pagos.  
+  Respuesta: `{ "success": true/false, "mensaje": "..." }`.
+
 ---
 
 ## Recursos Clover

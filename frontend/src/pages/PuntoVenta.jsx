@@ -6,24 +6,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createVenta } from '../services/ventasService';
+import { crearTicket } from '../services/cuentaCorrienteService';
 import { getDepositoPrincipal, getStocksPorVariante } from '../services/inventarioService';
 import { getConfiguracionPOS } from '../services/configuracionService';
 import { procesarPagoClover } from '../services/cloverService';
 import productosService from '../services/productosService';
-import clientesService from '../services/clientesService';
 import { useAuth } from '../hooks/useAuth';
 import SeleccionarClienteModal from '../components/SeleccionarClienteModal';
+import PresupuestoPrint from '../components/PresupuestoPrint';
 
 export default function PuntoVentaNuevo() {
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const codigoInputRef = useRef(null);
   
   // Estado principal
   const [cliente, setCliente] = useState(null);
   const [deposito, setDeposito] = useState(null);
   const [items, setItems] = useState([]);
-  const [metodoPago, setMetodoPago] = useState('EFECTIVO'); // EFECTIVO o TARJETA
+  const [metodoPago, setMetodoPago] = useState('EFECTIVO'); // EFECTIVO, TARJETA o CUENTA_CORRIENTE
   
   // Búsqueda
   const [codigoBusqueda, setCodigoBusqueda] = useState('');
@@ -45,6 +46,12 @@ export default function PuntoVentaNuevo() {
   // Pago
   const [pagaCon, setPagaCon] = useState(0);
 
+  // Cuenta corriente: nombre del ticket
+  const [descripcionTicket, setDescripcionTicket] = useState('');
+
+  // Presupuesto (imprimir sin cobro)
+  const [mostrarPresupuesto, setMostrarPresupuesto] = useState(false);
+
   // Clover: pago con tarjeta en dispositivo
   const [procesandoPagoClover, setProcesandoPagoClover] = useState(false);
   
@@ -65,21 +72,29 @@ export default function PuntoVentaNuevo() {
         setMostrarResultados(true);
       }
       
-      // F11 - Cambiar método de pago (Contado ↔ Tarjeta)
-      if (e.key === 'F11') {
+      // F11 - Cambiar método de pago (Contado ↔ Tarjeta; Cuenta corriente se elige con click)
+      if (e.key === 'F11' && metodoPago !== 'CUENTA_CORRIENTE') {
         e.preventDefault();
         cambiarMetodoPago(metodoPago === 'EFECTIVO' ? 'TARJETA' : 'EFECTIVO');
       }
       
-      // F12 - Cobrar: si hay items pero falta cliente obligatorio, mostrar modal para agregar cliente
+      // F12 - Cobrar / Añadir a CC
       if (e.key === 'F12') {
         e.preventDefault();
         if (items.length === 0) return;
-        if (clienteObligatorio && !cliente) {
-          setMostrarModalAgregarCliente(true);
-          return;
+        if (metodoPago === 'CUENTA_CORRIENTE') {
+          if (!cliente) {
+            setMostrarModalAgregarCliente(true);
+            return;
+          }
+          handleSubmit();
+        } else {
+          if (clienteObligatorio && !cliente) {
+            setMostrarModalAgregarCliente(true);
+            return;
+          }
+          handleSubmit();
         }
-        handleSubmit();
       }
       
       // F4 - Cancelar venta
@@ -309,7 +324,8 @@ export default function PuntoVentaNuevo() {
     if (metodoPago === 'TARJETA') {
       return parseFloat(variante.precio_tarjeta || variante.precio_mostrador || 0);
     }
-    return parseFloat(variante.precio_mostrador || 0); // EFECTIVO
+    // EFECTIVO y CUENTA_CORRIENTE usan precio mostrador
+    return parseFloat(variante.precio_mostrador || 0);
   };
   
   // Cambiar cantidad de un item
@@ -339,9 +355,9 @@ export default function PuntoVentaNuevo() {
   const cambiarMetodoPago = (nuevoMetodo) => {
     setMetodoPago(nuevoMetodo);
     
-    // Recalcular todos los precios (asegurar número por si el API devuelve string)
+    const usaTarjeta = nuevoMetodo === 'TARJETA';
     setItems(items.map(item => {
-      const raw = nuevoMetodo === 'TARJETA' 
+      const raw = usaTarjeta
         ? item.variante.precio_tarjeta || item.variante.precio_mostrador
         : item.variante.precio_mostrador;
       const nuevoPrecio = Number(raw) || 0;
@@ -362,26 +378,71 @@ export default function PuntoVentaNuevo() {
     return pagaCon - calcularTotal();
   };
   
-  // Intentar cobrar: si falta cliente obligatorio, muestra modal "¿Agregar cliente?"
+  // Intentar cobrar: si falta cliente obligatorio (o CC sin cliente), muestra modal
   const intentarCobrar = () => {
     if (items.length === 0) {
       setError('Agregá al menos un producto');
       return;
     }
-    if (clienteObligatorio && !cliente) {
+    if (metodoPago === 'CUENTA_CORRIENTE') {
+      if (!cliente) {
+        setMostrarModalAgregarCliente(true);
+        return;
+      }
+    } else if (clienteObligatorio && !cliente) {
       setMostrarModalAgregarCliente(true);
       return;
     }
     handleSubmit();
   };
 
-  // Enviar venta (F12)
+  // Enviar venta (F12) o añadir a cuenta corriente
   const handleSubmit = async () => {
     if (items.length === 0) {
       setError('Debe agregar al menos un producto');
       return;
     }
 
+    // Flujo Cuenta Corriente
+    if (metodoPago === 'CUENTA_CORRIENTE') {
+      if (!cliente) {
+        setError('Cliente obligatorio para cuenta corriente');
+        return;
+      }
+      if (!deposito?.id) {
+        setError('No hay depósito configurado');
+        return;
+      }
+      try {
+        setSubmitting(true);
+        setError('');
+        const ticket = await crearTicket({
+          cliente_id: cliente.id,
+          deposito_id: deposito.id,
+          descripcion: descripcionTicket.trim() || `POS ${new Date().toLocaleString('es-AR')}`,
+        });
+        for (const item of items) {
+          await agregarItem(ticket.id, {
+            variante_id: item.variante.id,
+            cantidad: item.cantidad,
+            precio_unitario: Number(item.precio_unitario) || 0,
+            descuento_unitario: 0,
+          });
+        }
+        limpiarVenta();
+        setMetodoPago('EFECTIVO');
+        setDescripcionTicket('');
+        navigate(`/cuenta-corriente/${ticket.id}`);
+      } catch (err) {
+        console.error('Error al crear ticket cuenta corriente:', err);
+        setError(err.response?.data?.error || 'Error al añadir a cuenta corriente');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Flujo venta normal (Cobrar)
     const total = calcularTotal();
     let cloverPagoId = null;
 
@@ -389,7 +450,6 @@ export default function PuntoVentaNuevo() {
       setSubmitting(true);
       setError('');
 
-      // Si es pago con tarjeta, procesar primero en el dispositivo Clover
       if (metodoPago === 'TARJETA') {
         setProcesandoPagoClover(true);
         try {
@@ -432,8 +492,6 @@ export default function PuntoVentaNuevo() {
       };
 
       const response = await createVenta(ventaData);
-
-      // Redirigir al detalle de la venta
       navigate(`/ventas/${response.id}`);
     } catch (err) {
       console.error('Error al crear venta:', err);
@@ -450,6 +508,8 @@ export default function PuntoVentaNuevo() {
     setPagaCon(0);
     setError('');
     setAlertaMargen('');
+    setDescripcionTicket('');
+    setMetodoPago('EFECTIVO');
     setCodigoBusqueda('');
     codigoInputRef.current?.focus();
   };
@@ -548,11 +608,19 @@ export default function PuntoVentaNuevo() {
                     </div>
                   ) : (
                     <div className="p-3 sm:p-4 md:p-6 space-y-2 sm:space-y-3 lg:space-y-4">
-                      {items.map((item) => (
+                      {items.map((item) => {
+                        const productoNombre = item.variante.producto_nombre ?? item.variante.producto_base?.nombre ?? '';
+                        const varianteNombre = item.variante.nombre_variante ?? '';
+                        const descripcion = productoNombre
+                          ? varianteNombre
+                            ? `${productoNombre} - ${varianteNombre}`
+                            : productoNombre
+                          : item.variante.nombre_completo;
+                        return (
                         <div key={item.variante.id} className="border border-gray-200 dark:border-slate-600 rounded-xl p-3 bg-gray-50 dark:bg-slate-700/50 shadow-sm">
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-gray-100 truncate">{item.variante.nombre_completo}</p>
+                              <p className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-gray-100 truncate">{descripcion}</p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">{item.variante.codigo} · {item.variante.marca_nombre || item.variante.producto_base?.marca?.nombre || '—'}</p>
                             </div>
                             <button
@@ -602,7 +670,7 @@ export default function PuntoVentaNuevo() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                      );})}
                     </div>
                   )}
                 </div>
@@ -629,10 +697,18 @@ export default function PuntoVentaNuevo() {
                         </td>
                       </tr>
                     ) : (
-                      items.map((item) => (
+                      items.map((item) => {
+                        const productoNombre = item.variante.producto_nombre ?? item.variante.producto_base?.nombre ?? '';
+                        const varianteNombre = item.variante.nombre_variante ?? '';
+                        const descripcion = productoNombre
+                          ? varianteNombre
+                            ? `${productoNombre} - ${varianteNombre}`
+                            : productoNombre
+                          : item.variante.nombre_completo;
+                        return (
                         <tr key={item.variante.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                           <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-mono truncate">{item.variante.codigo}</td>
-                          <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 dark:text-gray-100 font-medium truncate min-w-0">{item.variante.nombre_completo}</td>
+                          <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-800 dark:text-gray-100 font-medium truncate min-w-0">{descripcion}</td>
                           <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{item.variante.marca_nombre || item.variante.producto_base?.marca?.nombre || '—'}</td>
                           <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-center font-semibold text-xs sm:text-sm text-gray-800 dark:text-gray-100">${Number(item.precio_unitario ?? 0).toFixed(2)}</td>
                           <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-center">
@@ -674,7 +750,7 @@ export default function PuntoVentaNuevo() {
                             </button>
                           </td>
                         </tr>
-                      ))
+                      );})
                     )}
                   </tbody>
                 </table>
@@ -731,28 +807,39 @@ export default function PuntoVentaNuevo() {
             {/* Método de Pago - F11 alterna Contado/Tarjeta */}
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-2.5 sm:p-3 border border-gray-100 dark:border-slate-700">
               <h3 className="font-bold text-xs sm:text-sm mb-1.5 sm:mb-2 text-gray-800 dark:text-gray-100">Método de Pago <span className="text-gray-400 dark:text-gray-500 font-normal">(F11)</span></h3>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   onClick={() => cambiarMetodoPago('EFECTIVO')}
-                  className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 ${
+                  className={`px-2 py-1.5 rounded-lg font-semibold text-xs transition-all duration-200 ${
                     metodoPago === 'EFECTIVO'
-                      ? 'bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 hover:shadow-md border border-gray-200 dark:border-slate-600'
+                      ? 'bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white shadow-lg shadow-green-500/30'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
                   }`}
                 >
                   CONTADO
                 </button>
                 <button
                   onClick={() => cambiarMetodoPago('TARJETA')}
-                  className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 ${
+                  className={`px-2 py-1.5 rounded-lg font-semibold text-xs transition-all duration-200 ${
                     metodoPago === 'TARJETA'
-                      ? 'bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 hover:shadow-md border border-gray-200 dark:border-slate-600'
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
                   }`}
                 >
                   TARJETA
                 </button>
+                <button
+                  onClick={() => cambiarMetodoPago('CUENTA_CORRIENTE')}
+                  className={`px-2 py-1.5 rounded-lg font-semibold text-xs transition-all duration-200 ${
+                    metodoPago === 'CUENTA_CORRIENTE'
+                      ? 'bg-gradient-to-br from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white shadow-lg shadow-amber-500/30'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
+                  }`}
+                >
+                  CC
+                </button>
               </div>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">CC = Cuenta corriente</p>
             </div>
             
             {/* Totales - ULTRA COMPACTO */}
@@ -763,41 +850,79 @@ export default function PuntoVentaNuevo() {
                   ${total.toFixed(2)}
                 </span>
               </div>
-              
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Pagó Con:
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={pagaCon}
-                  onChange={(e) => setPagaCon(parseFloat(e.target.value) || 0)}
-                  className="w-full px-2.5 py-1.5 text-sm sm:text-base text-right bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
-                  placeholder="0.00"
-                />
-              </div>
-              
-              <div className="flex justify-between items-center pt-1.5 sm:pt-2 border-t border-gray-200 dark:border-slate-600">
-                <span className="font-bold text-sm sm:text-base text-gray-800 dark:text-gray-100">Cambio:</span>
-                <span className="text-base sm:text-lg lg:text-xl font-bold text-blue-600 dark:text-blue-400">
-                  ${cambio >= 0 ? cambio.toFixed(2) : '0.00'}
-                </span>
-              </div>
+
+              {metodoPago === 'CUENTA_CORRIENTE' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre del ticket (ej: Moto 110)
+                  </label>
+                  <input
+                    type="text"
+                    value={descripcionTicket}
+                    onChange={(e) => setDescripcionTicket(e.target.value)}
+                    className="input-field w-full uppercase-input px-2.5 py-1.5 text-sm"
+                    placeholder="Opcional: descripción del trabajo"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Pagó Con:
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={pagaCon}
+                      onChange={(e) => setPagaCon(parseFloat(e.target.value) || 0)}
+                      className="w-full px-2.5 py-1.5 text-sm sm:text-base text-right bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-1.5 sm:pt-2 border-t border-gray-200 dark:border-slate-600">
+                    <span className="font-bold text-sm sm:text-base text-gray-800 dark:text-gray-100">Cambio:</span>
+                    <span className="text-base sm:text-lg lg:text-xl font-bold text-blue-600 dark:text-blue-400">
+                      ${cambio >= 0 ? cambio.toFixed(2) : '0.00'}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
             
-            {/* Botón de cobrar: sin cliente obligatorio muestra modal "¿Agregar cliente?" */}
+            {/* Botón de cobrar / Añadir a CC */}
             {items.length === 0 && !submitting && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">
                 Agregá al menos un producto para cobrar.
               </p>
             )}
+            {metodoPago === 'CUENTA_CORRIENTE' && items.length > 0 && !cliente && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mb-1">
+                Cuenta corriente requiere cliente.
+              </p>
+            )}
             <button
               onClick={intentarCobrar}
-              disabled={items.length === 0 || submitting}
-              className="w-full px-4 py-2.5 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg hover:shadow-2xl hover:shadow-green-500/50 hover:-translate-y-1 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none font-bold text-sm sm:text-base shadow-xl shadow-green-500/40 transition-all duration-200"
+              disabled={items.length === 0 || submitting || (metodoPago === 'CUENTA_CORRIENTE' && !cliente)}
+              className={`w-full px-4 py-2.5 rounded-lg hover:shadow-2xl hover:-translate-y-1 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none font-bold text-sm sm:text-base transition-all duration-200 ${
+                metodoPago === 'CUENTA_CORRIENTE'
+                  ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-xl shadow-amber-500/40 hover:shadow-amber-500/50'
+                  : 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-xl shadow-green-500/40 hover:shadow-green-500/50'
+              }`}
             >
-              {submitting ? 'Procesando...' : <><span className="hidden sm:inline">F12 - </span>COBRAR</>}
+              {submitting
+                ? 'Procesando...'
+                : metodoPago === 'CUENTA_CORRIENTE'
+                  ? <><span className="hidden sm:inline">F12 - </span>AÑADIR A CUENTA CORRIENTE</>
+                  : <><span className="hidden sm:inline">F12 - </span>COBRAR</>}
+            </button>
+
+            {/* Presupuesto: imprimir sin cobro ni descuento de stock */}
+            <button
+              onClick={() => setMostrarPresupuesto(true)}
+              disabled={items.length === 0}
+              className="w-full px-4 py-2 bg-gray-200 dark:bg-slate-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm transition-all"
+            >
+              🖨️ PRESUPUESTO
             </button>
             
             {alertaMargen && (
@@ -980,6 +1105,15 @@ export default function PuntoVentaNuevo() {
             setCliente(clienteSeleccionado);
             setMostrarModalCliente(false);
           }}
+        />
+      )}
+
+      {/* Modal: Presupuesto - imprimir sin cobro ni descuento de stock */}
+      {mostrarPresupuesto && (
+        <PresupuestoPrint
+          items={items}
+          cliente={cliente}
+          onClose={() => setMostrarPresupuesto(false)}
         />
       )}
     </div>

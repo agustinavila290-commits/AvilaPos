@@ -44,3 +44,14 @@ def config_clover(request):
         'activo': config is not None,
         'nombre': config.nombre if config else None,
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def probar_conexion_clover(request):
+    """
+    Prueba la conexión con Clover (endpoint, credenciales, red).
+    No crea órdenes ni procesa pagos.
+    """
+    resultado = CloverPayService.probar_conexion()
+    return Response(resultado, status=status.HTTP_200_OK)

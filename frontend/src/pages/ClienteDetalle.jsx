@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import clientesService from '../services/clientesService';
+import { getTickets } from '../services/cuentaCorrienteService';
 import MetricCard from '../components/MetricCard';
 import SoftCard from '../components/SoftCard';
 
@@ -10,6 +11,7 @@ export default function ClienteDetalle() {
   
   const [cliente, setCliente] = useState(null);
   const [historial, setHistorial] = useState(null);
+  const [ticketsCC, setTicketsCC] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,12 +21,14 @@ export default function ClienteDetalle() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [clienteData, historialData] = await Promise.all([
+      const [clienteData, historialData, ticketsData] = await Promise.all([
         clientesService.getCliente(id),
-        clientesService.getHistorial(id)
+        clientesService.getHistorial(id),
+        getTickets({ cliente: id }).catch(() => []),
       ]);
       setCliente(clienteData);
       setHistorial(historialData);
+      setTicketsCC(Array.isArray(ticketsData) ? ticketsData : []);
     } catch (error) {
       console.error('Error al cargar datos:', error);
       alert('Error al cargar el cliente');
@@ -193,6 +197,61 @@ export default function ClienteDetalle() {
                             className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
                           >
                             Ver detalle →
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SoftCard>
+
+          {/* Tickets cuenta corriente */}
+          <SoftCard title="Tickets cuenta corriente" icon="📋" className="mt-6">
+            {!ticketsCC?.length ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">Sin tickets a cuenta corriente</p>
+                <button
+                  onClick={() => navigate('/cuenta-corriente/nuevo')}
+                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  Crear ticket →
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">#</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Descripción</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Estado</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Total</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ticketsCC.map((t) => (
+                      <tr key={t.id} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium">#{t.numero}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{t.descripcion || '-'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            t.estado === 'A_SALDAR' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {t.estado_display ?? t.estado}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-green-600">
+                          ${Number(t.total ?? 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => navigate(`/cuenta-corriente/${t.id}`)}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            Ver →
                           </button>
                         </td>
                       </tr>

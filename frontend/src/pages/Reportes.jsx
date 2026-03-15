@@ -144,10 +144,6 @@ export default function Reportes() {
     }).format(value);
   };
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('es-AR');
-  };
-
   return (
     <div className="space-y-3 sm:space-y-4 lg:space-y-6">
       {/* Header - Soft UI */}

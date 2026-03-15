@@ -19,6 +19,37 @@ class CloverPayService:
         return CloverConfig.objects.filter(activo=True).first()
 
     @staticmethod
+    def probar_conexion():
+        """
+        Prueba la conectividad con Clover sin crear órdenes ni pagos.
+        Returns:
+            dict: { 'success': bool, 'mensaje': str }
+        """
+        config = CloverPayService.get_config_activa()
+        if not config:
+            return {
+                'success': False,
+                'mensaje': 'Clover no está configurado. Configure en Admin → Clover → Configuraciones Clover.',
+            }
+        try:
+            client = CloverAPIClient(
+                merchant_id=config.merchant_id,
+                access_token=config.access_token,
+                base_url=config.endpoint_url,
+                timeout=10,
+            )
+            client.test_connection()
+            return {
+                'success': True,
+                'mensaje': f'Conexión exitosa con Clover ({config.nombre}).',
+            }
+        except CloverAPIError as e:
+            return {
+                'success': False,
+                'mensaje': str(e),
+            }
+
+    @staticmethod
     def procesar_pago(monto, descripcion='Venta', orden_id_externo=None):
         """
         Procesa un pago con Clover.

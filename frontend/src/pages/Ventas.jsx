@@ -4,12 +4,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getVentas, getResumenDiario } from '../services/ventasService';
-import { useAuth } from '../hooks/useAuth';
 import MetricCard from '../components/MetricCard';
 import SoftCard from '../components/SoftCard';
 
 export default function Ventas() {
-  const { isAdmin } = useAuth();
   const [ventas, setVentas] = useState([]);
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);

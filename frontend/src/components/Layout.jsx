@@ -23,6 +23,7 @@ export default function Layout({ children }) {
     { path: '/clientes', label: 'Clientes', icon: '👥', admin: false },
     { path: '/inventario', label: 'Inventario', icon: '📊', admin: false },
     { path: '/devoluciones', label: 'Devoluciones', icon: '↩️', admin: false },
+    { path: '/cuenta-corriente', label: 'Cuenta Corriente', icon: '📋', admin: false },
     { path: '/compras', label: 'Compras', icon: '🛍️', admin: true },
     { path: '/reportes', label: 'Reportes', icon: '📈', admin: true },
   ];

@@ -131,11 +131,14 @@ class MovimientoStock(models.Model):
     class TipoMovimiento(models.TextChoices):
         COMPRA = 'COMPRA', 'Compra'
         VENTA = 'VENTA', 'Venta'
+        VENTA_WEB = 'VENTA_WEB', 'Venta tienda web'
         DEVOLUCION = 'DEVOLUCION', 'Devolución'
         ANULACION = 'ANULACION', 'Anulación'
         AJUSTE = 'AJUSTE', 'Ajuste Manual'
         TRANSFERENCIA = 'TRANSFERENCIA', 'Transferencia'
         INVENTARIO_INICIAL = 'INVENTARIO_INICIAL', 'Inventario Inicial'
+        SALIDA_TICKET_CC = 'SALIDA_TICKET_CC', 'Salida ticket cuenta corriente'
+        DEVOLUCION_TICKET_CC = 'DEVOLUCION_TICKET_CC', 'Devolución ticket cuenta corriente'
     
     variante = models.ForeignKey(
         VarianteProducto,

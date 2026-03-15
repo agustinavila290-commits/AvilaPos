@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 /**
  * Preload script
  * Se ejecuta antes de cargar la página

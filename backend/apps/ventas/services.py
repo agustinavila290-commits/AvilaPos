@@ -172,6 +172,42 @@ class VentaService:
         return margen_porcentaje < umbral
     
     @staticmethod
+    @transaction.atomic
+    def crear_venta_desde_ticket_cc(ticket, usuario, metodo_pago):
+        """
+        Crea Venta y DetalleVenta desde un ticket de cuenta corriente.
+        NO descuenta stock (ya fue descontado al agregar al ticket).
+        """
+        from apps.cuenta_corriente.models import TicketCuentaCorriente
+        subtotal = ticket.subtotal
+        total = ticket.total
+
+        venta = Venta.objects.create(
+            cliente=ticket.cliente,
+            usuario=usuario,
+            deposito=ticket.deposito,
+            subtotal=subtotal,
+            descuento_porcentaje=0,
+            descuento_monto=0,
+            total=total,
+            metodo_pago=metodo_pago,
+            estado=Venta.EstadoVenta.COMPLETADA,
+        )
+
+        for det in ticket.detalles.all():
+            DetalleVenta.objects.create(
+                venta=venta,
+                variante=det.variante,
+                cantidad=det.cantidad,
+                precio_unitario=det.precio_unitario,
+                descuento_unitario=det.descuento_unitario,
+                subtotal=det.subtotal,
+                costo_unitario=det.costo_unitario,
+            )
+
+        return venta
+
+    @staticmethod
     def validar_descuento_permitido(usuario, descuento_porcentaje):
         """
         Valida si el usuario puede aplicar el descuento.

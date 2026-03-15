@@ -12,22 +12,6 @@ export default function ProductoDetalle() {
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(false);
   const MARGEN_DEFAULT = { mostrador: 75, web: 60, tarjeta: 84 };
-
-  const calcPrecio = (costo, pct) => {
-    const c = parseFloat(costo);
-    if (isNaN(c) || c < 0) return '';
-    const p = parseFloat(pct);
-    if (isNaN(p) || p < 0) return '';
-    return (c * (1 + p / 100)).toFixed(2);
-  };
-
-  const calcPct = (costo, precio) => {
-    const c = parseFloat(costo);
-    const pr = parseFloat(precio);
-    if (isNaN(c) || c <= 0 || isNaN(pr) || pr < 0) return '';
-    return Math.round((pr / c - 1) * 100);
-  };
-
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
@@ -70,9 +54,12 @@ export default function ProductoDetalle() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
-      const { pct_mostrador, pct_web, pct_tarjeta, ...payload } = formData;
+      const payload = { ...formData };
+      delete payload.pct_mostrador;
+      delete payload.pct_web;
+      delete payload.pct_tarjeta;
       await productosService.updateVariante(id, payload);
       alert('Producto actualizado correctamente');
       setEditando(false);

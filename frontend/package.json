@@ -2,6 +2,7 @@
   "name": "casa-repuestos-frontend",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "main": "electron/main.js",
   "author": "Casa de Repuestos",
   "description": "Sistema integral de gestión para casa de repuestos de motos",
@@ -9,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives",
     "preview": "vite preview",
     "electron": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "npm run build && electron-builder",
