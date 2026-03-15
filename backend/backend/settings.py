@@ -38,6 +38,17 @@ else:
     allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
     ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
 
+# En producción, confiar en el dominio para CSRF (admin y cookies)
+# La API /api/ está eximida por DisableCSRFForAPIMiddleware
+if not DEBUG and '*' not in ALLOWED_HOSTS:
+    CSRF_TRUSTED_ORIGINS = [
+        f'https://{h}' for h in ALLOWED_HOSTS
+    ] + [
+        f'http://{h}' for h in ALLOWED_HOSTS
+    ]
+else:
+    CSRF_TRUSTED_ORIGINS = []
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -50,6 +61,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # requerido si BLACKLIST_AFTER_ROTATION=True
     'corsheaders',
     'django_filters',
     
@@ -77,6 +89,7 @@ MIDDLEWARE = [
     'django.middleware.locale.LocaleMiddleware',  # Internacionalización (español)
     'corsheaders.middleware.CorsMiddleware',  # CORS debe estar antes de CommonMiddleware
     'django.middleware.common.CommonMiddleware',
+    'backend.middleware.DisableCSRFForAPIMiddleware',  # API usa JWT, sin CSRF
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

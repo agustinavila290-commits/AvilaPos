@@ -69,11 +69,14 @@ class LoginSerializer(serializers.Serializer):
     """Serializer para login"""
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
-    
+
     def validate(self, data):
-        username = data.get('username')
-        password = data.get('password')
-        
+        username = (data.get('username') or '').strip()
+        password = (data.get('password') or '')
+        # No hacer strip a la contraseña para no romper si tiene espacios intencionales
+        if not username:
+            raise serializers.ValidationError('Debes proporcionar usuario y contraseña.')
+
         if username and password:
             user = authenticate(username=username, password=password)
             
@@ -92,5 +95,5 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'Debes proporcionar usuario y contraseña.'
             )
-        
+
         return data

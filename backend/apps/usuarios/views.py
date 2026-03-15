@@ -33,25 +33,33 @@ class AuthViewSet(viewsets.GenericViewSet):
         """
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         user = serializer.validated_data['user']
-        
-        # Generar tokens JWT
-        refresh = RefreshToken.for_user(user)
-        
+
+        try:
+            refresh = RefreshToken.for_user(user)
+        except Exception as e:
+            return Response(
+                {'detail': f'Error al generar token: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Valores seguros para JSON (evitar None en email, rol por migraciones viejas)
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email or '',
+            'first_name': user.first_name or '',
+            'last_name': user.last_name or '',
+            'rol': getattr(user, 'rol', 'CAJERO'),
+            'es_administrador': getattr(user, 'es_administrador', user.is_superuser),
+            'es_cajero': getattr(user, 'es_cajero', True),
+        }
+
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'rol': user.rol,
-                'es_administrador': user.es_administrador,
-                'es_cajero': user.es_cajero,
-            }
+            'user': user_data,
         }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
