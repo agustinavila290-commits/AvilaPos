@@ -34,12 +34,10 @@ export default function Login() {
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-slate-700">
           {/* Logo y título */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-500/30">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+            <div className="flex justify-center mb-4">
+              <img src="/logo-avila.png" alt="Avila Moto Repuesto" className="h-20 w-auto object-contain" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Casa de Repuestos</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Avila Moto Repuesto</h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2">Sistema de Gestión</p>
           </div>
 
@@ -121,18 +119,11 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {/* Credenciales de prueba */}
-          <div className="mt-6 p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
-            <p className="text-sm text-blue-900 dark:text-blue-200 font-bold mb-2">💡 Credenciales de prueba:</p>
-            <p className="text-sm text-blue-700 dark:text-blue-300">Usuario: <span className="font-mono font-bold">admin</span></p>
-            <p className="text-sm text-blue-700 dark:text-blue-300">Contraseña: <span className="font-mono font-bold">admin123</span></p>
-          </div>
         </div>
 
         {/* Footer */}
         <p className="text-center text-gray-600 dark:text-gray-400 text-sm mt-6">
-          Casa de Repuestos - Sistema de Gestión © 2026
+          Avila Moto Repuesto - Sistema de Gestión © 2026
         </p>
       </div>
     </div>
