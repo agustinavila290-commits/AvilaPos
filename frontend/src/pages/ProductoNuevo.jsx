@@ -375,6 +375,7 @@ export default function ProductoNuevo() {
               name="nombre"
               value={formData.nombre ?? ''}
               onChange={handleChange}
+              onInput={handleChange}
               className="input-field"
               placeholder="Ej: Pistón Honda CG 150"
             />
