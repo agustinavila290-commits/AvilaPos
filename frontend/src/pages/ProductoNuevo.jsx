@@ -27,6 +27,8 @@ export default function ProductoNuevo() {
   const [creandoCategoria, setCreandoCategoria] = useState(false);
   const marcaRef = useRef(null);
   const categoriaRef = useRef(null);
+  const isSelectingRef = useRef(false);
+  const blurTimeoutRef = useRef(null);
 
   const MARGEN_DEFAULT = { mostrador: 75, web: 60, tarjeta: 84 };
 
@@ -99,6 +101,12 @@ export default function ProductoNuevo() {
     }
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+    };
   }, []);
 
   const loadOpciones = async () => {
@@ -383,6 +391,7 @@ export default function ProductoNuevo() {
                 setMarcaDropdownOpen(true);
               }}
               onFocus={() => {
+                if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
                 setMarcaSearch(marcaSeleccionada?.nombre || marcaSearch);
                 setMarcaDropdownOpen(true);
               }}
@@ -395,32 +404,37 @@ export default function ProductoNuevo() {
                 }
               }}
               onBlur={() => {
-                const texto = marcaSearch.trim();
-                if (!texto) {
+                if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+                blurTimeoutRef.current = setTimeout(() => {
+                  if (isSelectingRef.current) return;
+                  const texto = marcaSearch.trim();
+                  if (texto) {
+                    const exact = marcas.find(
+                      (m) => (m.nombre || '').toLowerCase() === texto.toLowerCase()
+                    );
+                    if (exact) {
+                      setFormData((prev) => ({ ...prev, marca: exact.id }));
+                      setMarcaSearch(exact.nombre);
+                      if (errors.marca) setErrors((prev) => ({ ...prev, marca: null }));
+                    }
+                  }
                   setMarcaDropdownOpen(false);
-                  return;
-                }
-                const exact = marcas.find(
-                  (m) => (m.nombre || '').toLowerCase() === texto.toLowerCase()
-                );
-                if (exact) {
-                  setFormData((prev) => ({ ...prev, marca: exact.id }));
-                  setMarcaSearch(exact.nombre);
-                  if (errors.marca) setErrors((prev) => ({ ...prev, marca: null }));
-                }
-                setMarcaDropdownOpen(false);
+                }, 120);
               }}
               className="input-field"
               placeholder="Escribí para buscar o crear marca"
               autoComplete="off"
             />
-            {marcaDropdownOpen && (
+            {(marcaDropdownOpen || !!marcaSearch.trim()) && (
               <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
                 {marcasFiltradas.map(m => (
                   <li
                     key={m.id}
                     className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-gray-200"
-                    onClick={() => {
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      isSelectingRef.current = true;
+                      setTimeout(() => { isSelectingRef.current = false; }, 0);
                       setFormData(prev => ({ ...prev, marca: m.id }));
                       setMarcaSearch(m.nombre);
                       setMarcaDropdownOpen(false);
@@ -433,7 +447,13 @@ export default function ProductoNuevo() {
                 {marcaSearch.trim() && !existeMarcaIgual && (
                   <li
                     className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-blue-400 border-t border-gray-600"
-                    onClick={creandoMarca ? undefined : crearMarca}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      if (creandoMarca) return;
+                      isSelectingRef.current = true;
+                      setTimeout(() => { isSelectingRef.current = false; }, 0);
+                      crearMarca();
+                    }}
                   >
                     {creandoMarca ? 'Creando...' : `+ Crear marca "${marcaSearch.trim()}"`}
                   </li>
@@ -456,6 +476,7 @@ export default function ProductoNuevo() {
                 setCategoriaDropdownOpen(true);
               }}
               onFocus={() => {
+                if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
                 setCategoriaSearch(categoriaSeleccionada?.nombre || categoriaSearch);
                 setCategoriaDropdownOpen(true);
               }}
@@ -468,32 +489,37 @@ export default function ProductoNuevo() {
                 }
               }}
               onBlur={() => {
-                const texto = categoriaSearch.trim();
-                if (!texto) {
+                if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+                blurTimeoutRef.current = setTimeout(() => {
+                  if (isSelectingRef.current) return;
+                  const texto = categoriaSearch.trim();
+                  if (texto) {
+                    const exact = categorias.find(
+                      (c) => (c.nombre || '').toLowerCase() === texto.toLowerCase()
+                    );
+                    if (exact) {
+                      setFormData((prev) => ({ ...prev, categoria: exact.id }));
+                      setCategoriaSearch(exact.nombre);
+                      if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: null }));
+                    }
+                  }
                   setCategoriaDropdownOpen(false);
-                  return;
-                }
-                const exact = categorias.find(
-                  (c) => (c.nombre || '').toLowerCase() === texto.toLowerCase()
-                );
-                if (exact) {
-                  setFormData((prev) => ({ ...prev, categoria: exact.id }));
-                  setCategoriaSearch(exact.nombre);
-                  if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: null }));
-                }
-                setCategoriaDropdownOpen(false);
+                }, 120);
               }}
               className="input-field"
               placeholder="Escribí para buscar o crear categoría"
               autoComplete="off"
             />
-            {categoriaDropdownOpen && (
+            {(categoriaDropdownOpen || !!categoriaSearch.trim()) && (
               <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
                 {categoriasFiltradas.map(c => (
                   <li
                     key={c.id}
                     className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-gray-200"
-                    onClick={() => {
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      isSelectingRef.current = true;
+                      setTimeout(() => { isSelectingRef.current = false; }, 0);
                       setFormData(prev => ({ ...prev, categoria: c.id }));
                       setCategoriaSearch(c.nombre);
                       setCategoriaDropdownOpen(false);
@@ -506,7 +532,13 @@ export default function ProductoNuevo() {
                 {categoriaSearch.trim() && !existeCategoriaIgual && (
                   <li
                     className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-blue-400 border-t border-gray-600"
-                    onClick={creandoCategoria ? undefined : crearCategoria}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      if (creandoCategoria) return;
+                      isSelectingRef.current = true;
+                      setTimeout(() => { isSelectingRef.current = false; }, 0);
+                      crearCategoria();
+                    }}
                   >
                     {creandoCategoria ? 'Creando...' : `+ Crear categoría "${categoriaSearch.trim()}"`}
                   </li>
