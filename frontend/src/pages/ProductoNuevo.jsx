@@ -392,6 +392,19 @@ export default function ProductoNuevo() {
                   if (marcaDropdownOpen && marcaSearch.trim() && !existeMarcaIgual && !creandoMarca) {
                     crearMarca();
                   }
+                } else if (e.key === 'Tab') {
+                  const texto = marcaSearch.trim();
+                  if (!texto) return;
+                  const exact = marcas.find(
+                    (m) => (m.nombre || '').toLowerCase() === texto.toLowerCase()
+                  );
+                  if (exact) {
+                    e.preventDefault();
+                    setFormData((prev) => ({ ...prev, marca: exact.id }));
+                    setMarcaSearch(exact.nombre);
+                    setMarcaDropdownOpen(false);
+                    if (errors.marca) setErrors((prev) => ({ ...prev, marca: null }));
+                  }
                 }
               }}
               className="input-field"
@@ -448,6 +461,19 @@ export default function ProductoNuevo() {
                   e.preventDefault();
                   if (categoriaDropdownOpen && categoriaSearch.trim() && !existeCategoriaIgual && !creandoCategoria) {
                     crearCategoria();
+                  }
+                } else if (e.key === 'Tab') {
+                  const texto = categoriaSearch.trim();
+                  if (!texto) return;
+                  const exact = categorias.find(
+                    (c) => (c.nombre || '').toLowerCase() === texto.toLowerCase()
+                  );
+                  if (exact) {
+                    e.preventDefault();
+                    setFormData((prev) => ({ ...prev, categoria: exact.id }));
+                    setCategoriaSearch(exact.nombre);
+                    setCategoriaDropdownOpen(false);
+                    if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: null }));
                   }
                 }
               }}
