@@ -25,6 +25,8 @@ export default function ProductoNuevo() {
   const [categoriaDropdownOpen, setCategoriaDropdownOpen] = useState(false);
   const [creandoMarca, setCreandoMarca] = useState(false);
   const [creandoCategoria, setCreandoCategoria] = useState(false);
+  const [marcaHighlight, setMarcaHighlight] = useState(-1);
+  const [categoriaHighlight, setCategoriaHighlight] = useState(-1);
   const marcaRef = useRef(null);
   const categoriaRef = useRef(null);
   const isSelectingRef = useRef(false);
@@ -391,17 +393,46 @@ export default function ProductoNuevo() {
               onChange={(e) => {
                 setMarcaSearch(e.target.value);
                 setMarcaDropdownOpen(true);
+                setMarcaHighlight(0);
               }}
               onFocus={() => {
                 if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
                 setMarcaSearch(marcaSeleccionada?.nombre || marcaSearch);
                 setMarcaDropdownOpen(true);
+                setMarcaHighlight(0);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (!marcaDropdownOpen) setMarcaDropdownOpen(true);
+                  setMarcaHighlight((h) => {
+                    const max = marcasFiltradas.length - 1;
+                    if (max < 0) return -1;
+                    return h < 0 ? 0 : Math.min(h + 1, max);
+                  });
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (!marcaDropdownOpen) setMarcaDropdownOpen(true);
+                  setMarcaHighlight((h) => {
+                    const max = marcasFiltradas.length - 1;
+                    if (max < 0) return -1;
+                    return h <= 0 ? 0 : h - 1;
+                  });
+                } else if (e.key === 'Enter') {
                   e.preventDefault();
                   const texto = marcaSearch.trim();
                   if (!texto) return;
+                  // Si hay highlight, seleccionar eso primero
+                  if (marcaDropdownOpen && marcaHighlight >= 0 && marcaHighlight < marcasFiltradas.length) {
+                    const m = marcasFiltradas[marcaHighlight];
+                    if (m) {
+                      setFormData((prev) => ({ ...prev, marca: m.id }));
+                      setMarcaSearch(m.nombre);
+                      setMarcaDropdownOpen(false);
+                      if (errors.marca) setErrors((prev) => ({ ...prev, marca: null }));
+                      return;
+                    }
+                  }
                   const exact = marcas.find(
                     (m) => (m.nombre || '').toLowerCase() === texto.toLowerCase()
                   );
@@ -440,12 +471,12 @@ export default function ProductoNuevo() {
               autoComplete="off"
               data-no-uppercase
             />
-            {(marcaDropdownOpen || !!marcaSearch.trim()) && (
+            {marcaDropdownOpen && (
               <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
                 {marcasFiltradas.map(m => (
                   <li
                     key={m.id}
-                    className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-gray-200"
+                    className={`px-3 py-2 cursor-pointer text-gray-200 ${marcasFiltradas[marcaHighlight]?.id === m.id ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       isSelectingRef.current = true;
@@ -453,6 +484,7 @@ export default function ProductoNuevo() {
                       setFormData(prev => ({ ...prev, marca: m.id }));
                       setMarcaSearch(m.nombre);
                       setMarcaDropdownOpen(false);
+                      setMarcaHighlight(0);
                       if (errors.marca) setErrors(prev => ({ ...prev, marca: null }));
                     }}
                   >
@@ -489,17 +521,45 @@ export default function ProductoNuevo() {
               onChange={(e) => {
                 setCategoriaSearch(e.target.value);
                 setCategoriaDropdownOpen(true);
+                setCategoriaHighlight(0);
               }}
               onFocus={() => {
                 if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
                 setCategoriaSearch(categoriaSeleccionada?.nombre || categoriaSearch);
                 setCategoriaDropdownOpen(true);
+                setCategoriaHighlight(0);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (!categoriaDropdownOpen) setCategoriaDropdownOpen(true);
+                  setCategoriaHighlight((h) => {
+                    const max = categoriasFiltradas.length - 1;
+                    if (max < 0) return -1;
+                    return h < 0 ? 0 : Math.min(h + 1, max);
+                  });
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (!categoriaDropdownOpen) setCategoriaDropdownOpen(true);
+                  setCategoriaHighlight((h) => {
+                    const max = categoriasFiltradas.length - 1;
+                    if (max < 0) return -1;
+                    return h <= 0 ? 0 : h - 1;
+                  });
+                } else if (e.key === 'Enter') {
                   e.preventDefault();
                   const texto = categoriaSearch.trim();
                   if (!texto) return;
+                  if (categoriaDropdownOpen && categoriaHighlight >= 0 && categoriaHighlight < categoriasFiltradas.length) {
+                    const c = categoriasFiltradas[categoriaHighlight];
+                    if (c) {
+                      setFormData((prev) => ({ ...prev, categoria: c.id }));
+                      setCategoriaSearch(c.nombre);
+                      setCategoriaDropdownOpen(false);
+                      if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: null }));
+                      return;
+                    }
+                  }
                   const exact = categorias.find(
                     (c) => (c.nombre || '').toLowerCase() === texto.toLowerCase()
                   );
@@ -538,12 +598,12 @@ export default function ProductoNuevo() {
               autoComplete="off"
               data-no-uppercase
             />
-            {(categoriaDropdownOpen || !!categoriaSearch.trim()) && (
+            {categoriaDropdownOpen && (
               <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
                 {categoriasFiltradas.map(c => (
                   <li
                     key={c.id}
-                    className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-gray-200"
+                    className={`px-3 py-2 cursor-pointer text-gray-200 ${categoriasFiltradas[categoriaHighlight]?.id === c.id ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       isSelectingRef.current = true;
@@ -551,6 +611,7 @@ export default function ProductoNuevo() {
                       setFormData(prev => ({ ...prev, categoria: c.id }));
                       setCategoriaSearch(c.nombre);
                       setCategoriaDropdownOpen(false);
+                      setCategoriaHighlight(0);
                       if (errors.categoria) setErrors(prev => ({ ...prev, categoria: null }));
                     }}
                   >
