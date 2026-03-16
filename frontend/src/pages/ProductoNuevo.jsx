@@ -376,6 +376,7 @@ export default function ProductoNuevo() {
               value={formData.nombre ?? ''}
               onChange={handleChange}
               onInput={handleChange}
+              data-no-uppercase
               className="input-field"
               placeholder="Ej: Pistón Honda CG 150"
             />
@@ -399,7 +400,19 @@ export default function ProductoNuevo() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  if (marcaDropdownOpen && marcaSearch.trim() && !existeMarcaIgual && !creandoMarca) {
+                  const texto = marcaSearch.trim();
+                  if (!texto) return;
+                  const exact = marcas.find(
+                    (m) => (m.nombre || '').toLowerCase() === texto.toLowerCase()
+                  );
+                  if (exact) {
+                    setFormData((prev) => ({ ...prev, marca: exact.id }));
+                    setMarcaSearch(exact.nombre);
+                    setMarcaDropdownOpen(false);
+                    if (errors.marca) setErrors((prev) => ({ ...prev, marca: null }));
+                    return;
+                  }
+                  if (marcaDropdownOpen && !existeMarcaIgual && !creandoMarca) {
                     crearMarca();
                   }
                 }
@@ -425,6 +438,7 @@ export default function ProductoNuevo() {
               className="input-field"
               placeholder="Escribí para buscar o crear marca"
               autoComplete="off"
+              data-no-uppercase
             />
             {(marcaDropdownOpen || !!marcaSearch.trim()) && (
               <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
@@ -484,7 +498,19 @@ export default function ProductoNuevo() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  if (categoriaDropdownOpen && categoriaSearch.trim() && !existeCategoriaIgual && !creandoCategoria) {
+                  const texto = categoriaSearch.trim();
+                  if (!texto) return;
+                  const exact = categorias.find(
+                    (c) => (c.nombre || '').toLowerCase() === texto.toLowerCase()
+                  );
+                  if (exact) {
+                    setFormData((prev) => ({ ...prev, categoria: exact.id }));
+                    setCategoriaSearch(exact.nombre);
+                    setCategoriaDropdownOpen(false);
+                    if (errors.categoria) setErrors((prev) => ({ ...prev, categoria: null }));
+                    return;
+                  }
+                  if (categoriaDropdownOpen && !existeCategoriaIgual && !creandoCategoria) {
                     crearCategoria();
                   }
                 }
@@ -510,6 +536,7 @@ export default function ProductoNuevo() {
               className="input-field"
               placeholder="Escribí para buscar o crear categoría"
               autoComplete="off"
+              data-no-uppercase
             />
             {(categoriaDropdownOpen || !!categoriaSearch.trim()) && (
               <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
