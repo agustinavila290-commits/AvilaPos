@@ -1,8 +1,18 @@
 """
 Generador de PDF para facturas
 Usa ReportLab para generar PDFs con formato AFIP
+Datos por defecto: Avila Moto Repuesto (si no hay ConfiguracionAFIP).
 """
 from reportlab.lib.pagesizes import A4
+
+# Datos del emisor por defecto (Avila Moto Repuesto)
+EMISOR_DEFAULT = {
+    'razon_social': 'Avila Moto Repuesto',
+    'titular': 'Avila Marcelo Bernabe',
+    'cuit': '20-23854391-7',
+    'domicilio_comercial': '',
+    'condicion_iva_display': 'Responsable Inscripto',
+}
 from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
@@ -60,13 +70,25 @@ def generar_pdf_factura(factura):
     elements.append(Spacer(1, 10*mm))
     
     # === DATOS DEL EMISOR Y FACTURA ===
+    if config:
+        razon_social = config.razon_social
+        cuit_emisor = config.cuit_emisor
+        condicion_iva = config.get_condicion_iva_display()
+        domicilio = config.domicilio_comercial or ''
+    else:
+        razon_social = EMISOR_DEFAULT['razon_social']
+        cuit_emisor = EMISOR_DEFAULT['cuit']
+        condicion_iva = EMISOR_DEFAULT['condicion_iva_display']
+        domicilio = EMISOR_DEFAULT['domicilio_comercial']
+
     datos_emisor = [
         ['EMISOR', 'COMPROBANTE'],
         [
-            f"<b>{config.razon_social if config else 'Sin configurar'}</b><br/>"
-            f"CUIT: {config.cuit_emisor if config else 'N/A'}<br/>"
-            f"Condición IVA: {config.get_condicion_iva_display() if config else 'N/A'}<br/>"
-            f"{config.domicilio_comercial if config else ''}",
+            f"<b>{razon_social}</b><br/>"
+            f"{EMISOR_DEFAULT['titular']}<br/>"
+            f"CUIT: {cuit_emisor}<br/>"
+            f"Condición IVA: {condicion_iva}<br/>"
+            f"{domicilio}",
             
             f"<b>N°: {factura.numero_completo}</b><br/>"
             f"Fecha: {factura.fecha_emision.strftime('%d/%m/%Y')}<br/>"

@@ -1,8 +1,9 @@
 /**
  * Ticket térmico para impresora 80mm.
- * Diseño tipo casa de repuestos / autopartes: claro, con código de producto y totales destacados.
+ * Avila Moto Repuesto - diseño claro con código de producto y totales destacados.
  */
 import { useRef } from 'react';
+import { EMPRESA } from '../constants/empresa';
 
 export default function TicketTermico({ venta, onClose }) {
   const printRef = useRef(null);
@@ -113,13 +114,10 @@ export default function TicketTermico({ venta, onClose }) {
           <div ref={printRef} className="bg-white p-3 mx-auto" style={{ width: '72mm', fontFamily: 'Courier New, monospace', fontSize: '11px' }}>
             {/* Encabezado */}
             <div className="line-double" />
-            <div className="center bold" style={{ fontSize: '14px' }}>CASA DE REPUESTOS</div>
-            <div className="center small" style={{ marginTop: '2px' }}>AUTOPARTES · MOTO Y AUTO</div>
-            <div className="line" />
-            <div className="center small">
-              www.casaderepuestos.com<br />
-              Tel: (XXX) XXX-XXXX
-            </div>
+            <div className="center bold" style={{ fontSize: '14px' }}>{EMPRESA.nombre.toUpperCase()}</div>
+            <div className="center small" style={{ marginTop: '2px' }}>{EMPRESA.titular}</div>
+            <div className="center small">CUIT {EMPRESA.cuit}</div>
+            <div className="center small">Tel: {EMPRESA.telefono.replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3')}</div>
             <div className="line-double" />
 
             {/* Datos del comprobante */}

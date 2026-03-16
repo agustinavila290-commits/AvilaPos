@@ -25,14 +25,16 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
     margen_porcentaje = serializers.ReadOnlyField()
     margen_monto = serializers.ReadOnlyField()
     nombre_completo = serializers.ReadOnlyField()
-    
-    # Stock se agregará en el Módulo 4
+    producto_nombre = serializers.CharField(source='producto_base.nombre', read_only=True)
+    marca_nombre = serializers.CharField(source='producto_base.marca.nombre', read_only=True)
+    categoria_nombre = serializers.CharField(source='producto_base.categoria.nombre', read_only=True)
     stock_actual = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = VarianteProducto
         fields = [
             'id', 'producto_base', 'nombre_variante', 'codigo',
+            'producto_nombre', 'marca_nombre', 'categoria_nombre',
             'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
             'margen_porcentaje', 'margen_monto', 'nombre_completo',
             'stock_actual', 'activo', 'fecha_creacion', 'fecha_actualizacion'

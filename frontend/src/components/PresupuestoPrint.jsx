@@ -1,8 +1,10 @@
 /**
  * Modal para imprimir presupuesto.
  * No descuenta stock ni crea venta. Solo imprime los productos del carrito.
+ * Avila Moto Repuesto
  */
 import { useRef } from 'react';
+import { EMPRESA } from '../constants/empresa';
 
 export default function PresupuestoPrint({ items, cliente, onClose }) {
   const printRef = useRef(null);
@@ -72,8 +74,9 @@ export default function PresupuestoPrint({ items, cliente, onClose }) {
           <div ref={printRef} className="bg-white p-3 mx-auto" style={{ width: '72mm', fontFamily: 'Courier New, monospace', fontSize: '11px' }}>
             <div className="line-double" />
             <div className="center bold" style={{ fontSize: '14px' }}>PRESUPUESTO</div>
-            <div className="center bold" style={{ fontSize: '12px', marginTop: '2px' }}>CASA DE REPUESTOS</div>
-            <div className="center small">Autopartes · Moto y Auto</div>
+            <div className="center bold" style={{ fontSize: '12px', marginTop: '2px' }}>{EMPRESA.nombre.toUpperCase()}</div>
+            <div className="center small">{EMPRESA.titular} · CUIT {EMPRESA.cuit}</div>
+            <div className="center small">Tel: {EMPRESA.telefono.replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3')}</div>
             <div className="line" />
             <div className="center small">{new Date().toLocaleString('es-AR')}</div>
             <div className="line-double" />
