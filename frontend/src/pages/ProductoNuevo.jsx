@@ -47,6 +47,7 @@ export default function ProductoNuevo() {
 
   const [formData, setFormData] = useState({
     nombre: '',
+    // descripcion se mantiene en el payload pero no se edita en el formulario
     descripcion: '',
     marca: '',
     categoria: '',
@@ -61,6 +62,7 @@ export default function ProductoNuevo() {
         pct_mostrador: MARGEN_DEFAULT.mostrador,
         pct_web: MARGEN_DEFAULT.web,
         pct_tarjeta: MARGEN_DEFAULT.tarjeta,
+        stock_inicial: '',
         activo: true
       }
     ]
@@ -68,6 +70,12 @@ export default function ProductoNuevo() {
 
   const marcasFiltradas = filtrarPorTexto(marcas, marcaSearch);
   const categoriasFiltradas = filtrarPorTexto(categorias, categoriaSearch);
+  const existeMarcaIgual = marcas.some(
+    (m) => (m.nombre || '').toLowerCase() === marcaSearch.trim().toLowerCase()
+  );
+  const existeCategoriaIgual = categorias.some(
+    (c) => (c.nombre || '').toLowerCase() === categoriaSearch.trim().toLowerCase()
+  );
   const marcaSeleccionada = marcas.find(m => String(m.id) === String(formData.marca));
   const categoriaSeleccionada = categorias.find(c => String(c.id) === String(formData.categoria));
 
@@ -220,6 +228,7 @@ export default function ProductoNuevo() {
           precio_mostrador: parseFloat(String(v.precio_mostrador).replace(',', '.')) || 0,
           precio_web: parseFloat(String(v.precio_web).replace(',', '.')) || 0,
           precio_tarjeta: (v.precio_tarjeta !== '' && v.precio_tarjeta != null) ? parseFloat(String(v.precio_tarjeta).replace(',', '.')) : 0,
+          stock_inicial: v.stock_inicial !== '' && v.stock_inicial != null ? parseInt(v.stock_inicial, 10) || 0 : 0,
           activo: v.activo !== false
         }))
       };
@@ -364,18 +373,6 @@ export default function ProductoNuevo() {
             {errors.nombre && <p className="text-red-400 text-sm mt-1">{errors.nombre}</p>}
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Descripción (opcional)</label>
-            <textarea
-              name="descripcion"
-              value={formData.descripcion ?? ''}
-              onChange={handleChange}
-              className="input-field"
-              rows={2}
-              placeholder="Descripción del producto"
-            />
-          </div>
-
           <div className="relative" ref={marcaRef}>
             <label className="block text-sm font-medium text-gray-300 mb-2">Marca *</label>
             <input
@@ -388,6 +385,14 @@ export default function ProductoNuevo() {
               onFocus={() => {
                 setMarcaSearch(marcaSeleccionada?.nombre || marcaSearch);
                 setMarcaDropdownOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (marcaDropdownOpen && marcaSearch.trim() && !existeMarcaIgual && !creandoMarca) {
+                    crearMarca();
+                  }
+                }
               }}
               className="input-field"
               placeholder="Escribí para buscar o crear marca"
@@ -409,7 +414,7 @@ export default function ProductoNuevo() {
                     {m.nombre}
                   </li>
                 ))}
-                {marcaSearch.trim() && (
+                {marcaSearch.trim() && !existeMarcaIgual && (
                   <li
                     className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-blue-400 border-t border-gray-600"
                     onClick={creandoMarca ? undefined : crearMarca}
@@ -438,6 +443,14 @@ export default function ProductoNuevo() {
                 setCategoriaSearch(categoriaSeleccionada?.nombre || categoriaSearch);
                 setCategoriaDropdownOpen(true);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (categoriaDropdownOpen && categoriaSearch.trim() && !existeCategoriaIgual && !creandoCategoria) {
+                    crearCategoria();
+                  }
+                }
+              }}
               className="input-field"
               placeholder="Escribí para buscar o crear categoría"
               autoComplete="off"
@@ -458,7 +471,7 @@ export default function ProductoNuevo() {
                     {c.nombre}
                   </li>
                 ))}
-                {categoriaSearch.trim() && (
+                {categoriaSearch.trim() && !existeCategoriaIgual && (
                   <li
                     className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-blue-400 border-t border-gray-600"
                     onClick={creandoCategoria ? undefined : crearCategoria}
@@ -558,7 +571,7 @@ export default function ProductoNuevo() {
                 </div>
 
                 {/* Precios en filas separadas para que se vea claro */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-700">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-700">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Mostrador *</label>
                     <div className="flex gap-2 items-center">
@@ -640,6 +653,18 @@ export default function ProductoNuevo() {
                         <span className="text-gray-400 text-sm">%</span>
                       </span>
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Stock inicial</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={v.stock_inicial ?? ''}
+                      onChange={(e) => handleVarianteChange(index, 'stock_inicial', e.target.value)}
+                      className="input-field"
+                      placeholder="Opc."
+                    />
                   </div>
                 </div>
               </div>

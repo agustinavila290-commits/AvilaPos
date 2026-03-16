@@ -56,6 +56,7 @@ class VarianteProductoCreateSerializer(serializers.ModelSerializer):
     precio_tarjeta = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=0, required=False, allow_null=True
     )
+    stock_inicial = serializers.IntegerField(required=False, default=0, min_value=0)
     
     class Meta:
         model = VarianteProducto
@@ -123,14 +124,33 @@ class ProductoConVariantesSerializer(serializers.ModelSerializer):
         # Asegurar activo por defecto si no viene
         if 'activo' not in validated_data:
             validated_data['activo'] = True
+        from apps.inventario.models import Deposito, MovimientoStock
+        from apps.inventario.services import InventarioService
+
+        request = self.context.get('request')
+        usuario = getattr(request, 'user', None) if request else None
+        deposito_principal = Deposito.objects.filter(es_principal=True, activo=True).first()
+
         with transaction.atomic():
             producto = ProductoBase.objects.create(**validated_data)
             for variante_data in variantes_data:
                 vd = dict(variante_data)
                 vd.pop('id', None)  # no enviar id al crear
+                stock_inicial = int(vd.pop('stock_inicial', 0) or 0)
                 if vd.get('precio_tarjeta') is None:
                     vd['precio_tarjeta'] = Decimal('0.00')
-                VarianteProducto.objects.create(producto_base=producto, **vd)
+                variante = VarianteProducto.objects.create(producto_base=producto, **vd)
+
+                # Stock inicial opcional en depósito principal
+                if stock_inicial > 0 and deposito_principal and usuario:
+                    InventarioService.registrar_movimiento(
+                        variante=variante,
+                        deposito=deposito_principal,
+                        tipo_movimiento=MovimientoStock.TipoMovimiento.INVENTARIO_INICIAL,
+                        cantidad=stock_inicial,
+                        usuario=usuario,
+                        observaciones='Stock inicial al crear producto'
+                    )
         return producto
 
 
