@@ -62,7 +62,8 @@ class VarianteProductoCreateSerializer(serializers.ModelSerializer):
         model = VarianteProducto
         fields = [
             'id', 'nombre_variante', 'codigo',
-            'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta', 'activo'
+            'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
+            'stock_inicial', 'activo'
         ]
     
     def validate_codigo(self, value):
