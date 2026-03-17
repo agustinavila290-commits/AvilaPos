@@ -21,7 +21,11 @@ export const generarPdfFactura = async (id) => {
 
 export const listarPuntosVenta = async () => {
   const response = await api.get(`${BASE_URL}/puntos-venta/`);
-  return response.data;
+  const data = response.data;
+  // Puede venir paginado (DRF): { results: [...] } o como array directo
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  return [];
 };
 
 export default {
