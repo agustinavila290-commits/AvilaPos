@@ -227,7 +227,20 @@ class AFIPServiceReal:
                 wsfe.Conectar(ambiente)
             
             # Configurar autenticación
-            wsfe.SetTicketAcceso(self.config.token, self.config.sign)
+            # Compatibilidad: según versión, SetTicketAcceso acepta (token, sign) o (ta_xml)
+            try:
+                wsfe.SetTicketAcceso(self.config.token, self.config.sign)
+            except TypeError:
+                # Alternativa 1: asignar atributos directos (muy común en pyafipws)
+                if hasattr(wsfe, 'Token') and hasattr(wsfe, 'Sign'):
+                    wsfe.Token = self.config.token
+                    wsfe.Sign = self.config.sign
+                else:
+                    # Alternativa 2: intentar pasar un TA si estuviera disponible
+                    ta = getattr(self.config, 'ta', None)  # por si existiera en alguna instalación
+                    if not ta:
+                        raise
+                    wsfe.SetTicketAcceso(ta)
             wsfe.Cuit = self.config.cuit_emisor
             
             # Configurar punto de venta
