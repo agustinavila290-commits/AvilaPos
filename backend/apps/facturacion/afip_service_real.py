@@ -77,19 +77,56 @@ class AFIPServiceReal:
                     'success': False,
                     'error': 'Certificados no configurados'
                 }
-            
-            # Compatibilidad: algunas versiones de pyafipws no aceptan keyword `ambiente`
-            try:
-                wsaa.Conectar(ambiente=ambiente)
-            except TypeError:
-                wsaa.Conectar(ambiente)
-            wsaa.CrearTra()
-            wsaa.CargarCertificado(self.cert_path, self.key_path)
-            
-            # Obtener token y sign
-            wsaa.GenerarTra()
-            wsaa.SignarTra()
-            wsaa.LoginCMS()
+
+            # Compatibilidad pyafipws: la API de WSAA varía según versión/instalación.
+            # Preferimos el flujo CreateTRA/SignTRA/LoginCMS (manual oficial).
+            create_tra = (
+                getattr(wsaa, 'CreateTRA', None) or
+                getattr(wsaa, 'CrearTRA', None) or
+                getattr(wsaa, 'CrearTra', None) or
+                getattr(wsaa, 'CrearTRA', None)
+            )
+            sign_tra = (
+                getattr(wsaa, 'SignTRA', None) or
+                getattr(wsaa, 'SignarTRA', None) or
+                getattr(wsaa, 'SignarTra', None)
+            )
+            login_cms = (
+                getattr(wsaa, 'LoginCMS', None) or
+                getattr(wsaa, 'LoginCms', None) or
+                getattr(wsaa, 'LoginCMS', None)
+            )
+
+            if create_tra and sign_tra and login_cms:
+                # En la mayoría de implementaciones, Conectar acepta ambiente como string posicional
+                try:
+                    wsaa.Conectar(ambiente=ambiente)
+                except TypeError:
+                    try:
+                        wsaa.Conectar(ambiente)
+                    except Exception:
+                        # Algunas versiones aceptan Conectar(cache, wsaa_url); si no conecta igual, LoginCMS suele funcionar
+                        pass
+
+                tra = create_tra("wsfe")
+                cms = sign_tra(tra, self.cert_path, self.key_path)
+                login_cms(cms)
+            else:
+                # Fallback: API antigua usada por algunas instalaciones (mantener compatibilidad)
+                try:
+                    wsaa.Conectar(ambiente=ambiente)
+                except TypeError:
+                    wsaa.Conectar(ambiente)
+                if hasattr(wsaa, 'CargarCertificado'):
+                    wsaa.CargarCertificado(self.cert_path, self.key_path)
+                if hasattr(wsaa, 'CrearTra'):
+                    wsaa.CrearTra()
+                if hasattr(wsaa, 'GenerarTra'):
+                    wsaa.GenerarTra()
+                if hasattr(wsaa, 'SignarTra'):
+                    wsaa.SignarTra()
+                if hasattr(wsaa, 'LoginCMS'):
+                    wsaa.LoginCMS()
             
             token = wsaa.token
             sign = wsaa.sign
