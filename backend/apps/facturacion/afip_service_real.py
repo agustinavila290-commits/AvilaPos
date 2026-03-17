@@ -67,6 +67,11 @@ class AFIPServiceReal:
             
             # Configurar ambiente
             ambiente = 'homologacion' if self.config.ambiente == 'H' else 'produccion'
+            wsaa_url = (
+                'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl'
+                if self.config.ambiente == 'H'
+                else 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl'
+            )
             
             # Crear instancia WSAA
             wsaa = WSAA()
@@ -98,14 +103,31 @@ class AFIPServiceReal:
             )
 
             if create_tra and sign_tra and login_cms:
-                # En la mayoría de implementaciones, Conectar acepta ambiente como string posicional
+                # Conectar a WSAA: distintas firmas según versión
+                conectado = False
+                # 1) Intentar firma (cache, wsaa_url)
                 try:
-                    wsaa.Conectar(ambiente=ambiente)
+                    wsaa.Conectar('', wsaa_url)
+                    conectado = True
                 except TypeError:
+                    pass
+                except Exception:
+                    pass
+                # 2) Intentar keyword ambiente (algunas builds)
+                if not conectado:
+                    try:
+                        wsaa.Conectar(ambiente=ambiente)
+                        conectado = True
+                    except TypeError:
+                        pass
+                    except Exception:
+                        pass
+                # 3) Intentar posicional ambiente
+                if not conectado:
                     try:
                         wsaa.Conectar(ambiente)
+                        conectado = True
                     except Exception:
-                        # Algunas versiones aceptan Conectar(cache, wsaa_url); si no conecta igual, LoginCMS suele funcionar
                         pass
 
                 tra = create_tra("wsfe")
