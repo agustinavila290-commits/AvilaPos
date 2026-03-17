@@ -272,16 +272,27 @@ class AFIPServiceReal:
             # Cliente
             # `Factura` no guarda tipo de documento explícito: asumir por defecto DNI (Consumidor Final)
             tipo_doc = getattr(factura, 'cliente_tipo_documento', None) or 'DNI'
-            wsfe.TipoDoc = self._get_tipo_documento(tipo_doc)
-            wsfe.NroDoc = factura.cliente_cuit.replace('-', '').replace('.', '')
+            nro_doc_raw = (getattr(factura, 'cliente_cuit', None) or '').strip()
+            nro_doc = ''.join(ch for ch in nro_doc_raw if ch.isdigit())
+            # Si no hay documento válido, AFIP exige Consumidor Final (99) con doc 0
+            if not nro_doc:
+                wsfe.TipoDoc = 99
+                wsfe.NroDoc = '0'
+            else:
+                wsfe.TipoDoc = self._get_tipo_documento(tipo_doc)
+                wsfe.NroDoc = nro_doc
             
             # Totales
-            wsfe.ImpTotal = float(factura.total)
-            wsfe.ImpTotConc = float(factura.subtotal - factura.iva_105 - factura.iva_21 - factura.iva_27)
-            wsfe.ImpNeto = float(factura.subtotal)
+            total = Decimal(str(factura.total or 0))
+            neto = Decimal(str(factura.subtotal or 0))
+            iva = Decimal(str((factura.iva_105 or 0) + (factura.iva_21 or 0) + (factura.iva_27 or 0)))
+            tot_conc = neto - iva
+            wsfe.ImpTotal = float(total)
+            wsfe.ImpTotConc = float(tot_conc if tot_conc > 0 else Decimal('0'))
+            wsfe.ImpNeto = float(neto)
             wsfe.ImpOpEx = 0.0
-            wsfe.ImpIVA = float(factura.iva_105 + factura.iva_21 + factura.iva_27)
-            wsfe.ImpTrib = float(factura.otros_tributos)
+            wsfe.ImpIVA = float(iva)
+            wsfe.ImpTrib = float(Decimal(str(factura.otros_tributos or 0)))
             
             # IVA
             if factura.iva_105 > 0:
