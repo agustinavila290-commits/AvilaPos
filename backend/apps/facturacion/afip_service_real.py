@@ -162,7 +162,12 @@ class AFIPServiceReal:
             # Guardar en configuración
             self.config.token = token
             self.config.sign = sign
-            self.config.token_expiracion = datetime.now() + timedelta(hours=12)
+            try:
+                from django.utils import timezone
+                now = timezone.now()
+            except Exception:
+                now = datetime.now()
+            self.config.token_expiracion = now + timedelta(hours=12)
             self.config.save()
             
             return {
@@ -207,7 +212,12 @@ class AFIPServiceReal:
                     }
             
             # Verificar expiración de token
-            if self.config.token_expiracion and self.config.token_expiracion < datetime.now():
+            try:
+                from django.utils import timezone
+                now = timezone.now()
+            except Exception:
+                now = datetime.now()
+            if self.config.token_expiracion and self.config.token_expiracion < now:
                 token_result = self.obtener_token()
                 if not token_result['success']:
                     return {
@@ -309,7 +319,11 @@ class AFIPServiceReal:
                 # Actualizar factura
                 factura.cae = str(wsfe.CAE)
                 factura.cae_vencimiento = datetime.strptime(wsfe.Vencimiento, '%Y%m%d').date()
-                factura.fecha_proceso_afip = datetime.now()
+                try:
+                    from django.utils import timezone
+                    factura.fecha_proceso_afip = timezone.now()
+                except Exception:
+                    factura.fecha_proceso_afip = datetime.now()
                 factura.resultado_afip = 'A'
                 factura.estado = factura.Estado.AUTORIZADA
                 factura.qr_data = self._generar_qr_data(factura, wsfe.CAE)
