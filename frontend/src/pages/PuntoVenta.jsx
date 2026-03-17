@@ -54,14 +54,34 @@ export default function PuntoVentaNuevo() {
 
   // Clover: pago con tarjeta en dispositivo
   const [procesandoPagoClover, setProcesandoPagoClover] = useState(false);
+
+  const focusCodigo = useCallback(() => {
+    // Evitar robar foco si hay modales abiertos
+    if (mostrarResultados || mostrarModalCliente || mostrarModalAgregarCliente || mostrarPresupuesto) return;
+    // En algunos navegadores el autofocus no engancha si el DOM todavía está acomodándose
+    requestAnimationFrame(() => {
+      setTimeout(() => codigoInputRef.current?.focus(), 0);
+    });
+  }, [mostrarResultados, mostrarModalCliente, mostrarModalAgregarCliente, mostrarPresupuesto]);
   
   useEffect(() => {
     cargarDepositoPrincipal();
     getConfiguracionPOS().then((cfg) => {
       setClienteObligatorio(cfg.CLIENTE_OBLIGATORIO !== false);
     }).catch(() => setClienteObligatorio(true));
-    codigoInputRef.current?.focus();
+    focusCodigo();
   }, []);
+
+  // Cuando termina de cargar el depósito (y no hay modales), volver a enfocar la barra de código.
+  useEffect(() => {
+    if (!deposito) return;
+    focusCodigo();
+  }, [deposito, focusCodigo]);
+
+  // Al cerrar modales, volver a enfocar la barra de código.
+  useEffect(() => {
+    focusCodigo();
+  }, [mostrarResultados, mostrarModalCliente, mostrarModalAgregarCliente, mostrarPresupuesto, focusCodigo]);
   
   // Atajos de teclado
   useEffect(() => {

@@ -114,12 +114,31 @@ export default function ProductoNuevo() {
   const loadOpciones = async () => {
     try {
       setLoading(true);
-      const [dataMarcas, dataCategorias] = await Promise.all([
-        productosService.getMarcas(),
-        productosService.getCategorias()
+      // Marcas/Categorías pueden venir paginadas: traer todo para poder seleccionar por nombre.
+      const fetchAll = async (fetchFn) => {
+        const all = [];
+        let page = 1;
+        while (true) {
+          const data = await fetchFn({ page, page_size: 200 });
+          if (Array.isArray(data)) {
+            all.push(...data);
+            break;
+          }
+          const results = data?.results || [];
+          all.push(...results);
+          if (!data?.next) break;
+          page += 1;
+          if (page > 50) break; // safety
+        }
+        return all;
+      };
+
+      const [allMarcas, allCategorias] = await Promise.all([
+        fetchAll(productosService.getMarcas),
+        fetchAll(productosService.getCategorias)
       ]);
-      setMarcas(dataMarcas.results || dataMarcas);
-      setCategorias(dataCategorias.results || dataCategorias);
+      setMarcas(allMarcas);
+      setCategorias(allCategorias);
     } catch (error) {
       console.error('Error al cargar marcas/categorías:', error);
     } finally {
@@ -139,7 +158,39 @@ export default function ProductoNuevo() {
       setMarcaDropdownOpen(false);
       if (errors.marca) setErrors(prev => ({ ...prev, marca: null }));
     } catch (err) {
-      setErrors(prev => ({ ...prev, marca: err.response?.data?.nombre?.[0] || 'Error al crear la marca' }));
+      const msg = err.response?.data?.nombre?.[0] || 'Error al crear la marca';
+      // Si ya existe, refrescar listado (por paginación) y seleccionar la existente
+      if (typeof msg === 'string' && msg.toLowerCase().includes('already exists')) {
+        try {
+          const allMarcas = await (async () => {
+            const all = [];
+            let page = 1;
+            while (true) {
+              const data = await productosService.getMarcas({ page, page_size: 200 });
+              if (Array.isArray(data)) {
+                all.push(...data);
+                break;
+              }
+              const results = data?.results || [];
+              all.push(...results);
+              if (!data?.next) break;
+              page += 1;
+              if (page > 50) break;
+            }
+            return all;
+          })();
+          setMarcas(allMarcas);
+          const exact = allMarcas.find((m) => (m.nombre || '').toLowerCase() === nombre.toLowerCase());
+          if (exact) {
+            setFormData((prev) => ({ ...prev, marca: exact.id }));
+            setMarcaSearch(exact.nombre);
+            setMarcaDropdownOpen(false);
+            setErrors((prev) => ({ ...prev, marca: null }));
+            return;
+          }
+        } catch (_) {}
+      }
+      setErrors(prev => ({ ...prev, marca: msg }));
     } finally {
       setCreandoMarca(false);
     }
@@ -675,6 +726,7 @@ export default function ProductoNuevo() {
                       type="text"
                       value={v.codigo ?? ''}
                       onChange={(e) => handleVarianteChange(index, 'codigo', e.target.value)}
+                      onInput={(e) => handleVarianteChange(index, 'codigo', e.target.value)}
                       className="input-field"
                       placeholder="Código único (primero cargar esto)"
                     />
@@ -700,6 +752,7 @@ export default function ProductoNuevo() {
                       type="text"
                       value={v.nombre_variante ?? ''}
                       onChange={(e) => handleVarianteChange(index, 'nombre_variante', e.target.value)}
+                      onInput={(e) => handleVarianteChange(index, 'nombre_variante', e.target.value)}
                       className="input-field"
                       placeholder="Ej: STD, 0.25, Original"
                     />
@@ -723,101 +776,106 @@ export default function ProductoNuevo() {
                   </div>
                 </div>
 
-                {/* Precios en filas separadas para que se vea claro */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2 border-t border-gray-700">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Mostrador *</label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={v.precio_mostrador ?? ''}
-                        onChange={(e) => handleVarianteChange(index, 'precio_mostrador', e.target.value)}
-                        className="input-field flex-1 min-w-0"
-                      />
-                      <span className="flex items-center gap-1 shrink-0 w-14">
+                {/* Precios + %: más aire; Stock en fila aparte */}
+                <div className="pt-2 border-t border-gray-700 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Mostrador *</label>
+                      <div className="flex gap-3 items-center">
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
-                          step="0.5"
-                          value={v.pct_mostrador !== undefined && v.pct_mostrador !== '' ? v.pct_mostrador : MARGEN_DEFAULT.mostrador}
-                          onChange={(e) => handleVarianteChange(index, 'pct_mostrador', e.target.value)}
-                          className="input-field text-center w-10"
-                          title="% margen"
+                          value={v.precio_mostrador ?? ''}
+                          onChange={(e) => handleVarianteChange(index, 'precio_mostrador', e.target.value)}
+                          className="input-field flex-1 min-w-0"
                         />
-                        <span className="text-gray-400 text-sm">%</span>
-                      </span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={v.pct_mostrador !== undefined && v.pct_mostrador !== '' ? v.pct_mostrador : MARGEN_DEFAULT.mostrador}
+                            onChange={(e) => handleVarianteChange(index, 'pct_mostrador', e.target.value)}
+                            className="input-field text-center w-20 px-2"
+                            title="% margen"
+                          />
+                          <span className="text-gray-400 text-sm">%</span>
+                        </span>
+                      </div>
+                      {errors[`variante_${index}_precio_mostrador`] && (
+                        <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_precio_mostrador`]}</p>
+                      )}
                     </div>
-                    {errors[`variante_${index}_precio_mostrador`] && (
-                      <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_precio_mostrador`]}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Web *</label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={v.precio_web ?? ''}
-                        onChange={(e) => handleVarianteChange(index, 'precio_web', e.target.value)}
-                        className="input-field flex-1 min-w-0"
-                      />
-                      <span className="flex items-center gap-1 shrink-0 w-14">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Web *</label>
+                      <div className="flex gap-3 items-center">
                         <input
                           type="number"
+                          step="0.01"
                           min="0"
-                          step="0.5"
-                          value={v.pct_web !== undefined && v.pct_web !== '' ? v.pct_web : MARGEN_DEFAULT.web}
-                          onChange={(e) => handleVarianteChange(index, 'pct_web', e.target.value)}
-                          className="input-field text-center w-10"
-                          title="% margen"
+                          value={v.precio_web ?? ''}
+                          onChange={(e) => handleVarianteChange(index, 'precio_web', e.target.value)}
+                          className="input-field flex-1 min-w-0"
                         />
-                        <span className="text-gray-400 text-sm">%</span>
-                      </span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={v.pct_web !== undefined && v.pct_web !== '' ? v.pct_web : MARGEN_DEFAULT.web}
+                            onChange={(e) => handleVarianteChange(index, 'pct_web', e.target.value)}
+                            className="input-field text-center w-20 px-2"
+                            title="% margen"
+                          />
+                          <span className="text-gray-400 text-sm">%</span>
+                        </span>
+                      </div>
+                      {errors[`variante_${index}_precio_web`] && (
+                        <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_precio_web`]}</p>
+                      )}
                     </div>
-                    {errors[`variante_${index}_precio_web`] && (
-                      <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_precio_web`]}</p>
-                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Tarjeta</label>
+                      <div className="flex gap-3 items-center">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={v.precio_tarjeta ?? ''}
+                          onChange={(e) => handleVarianteChange(index, 'precio_tarjeta', e.target.value)}
+                          className="input-field flex-1 min-w-0"
+                          placeholder="Opc."
+                        />
+                        <span className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={v.pct_tarjeta !== undefined && v.pct_tarjeta !== '' ? v.pct_tarjeta : MARGEN_DEFAULT.tarjeta}
+                            onChange={(e) => handleVarianteChange(index, 'pct_tarjeta', e.target.value)}
+                            className="input-field text-center w-20 px-2"
+                            title="% margen"
+                          />
+                          <span className="text-gray-400 text-sm">%</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Tarjeta</label>
-                    <div className="flex gap-2 items-center">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">Stock inicial</label>
                       <input
                         type="number"
-                        step="0.01"
                         min="0"
-                        value={v.precio_tarjeta ?? ''}
-                        onChange={(e) => handleVarianteChange(index, 'precio_tarjeta', e.target.value)}
-                        className="input-field flex-1 min-w-0"
+                        step="1"
+                        value={v.stock_inicial ?? ''}
+                        onChange={(e) => handleVarianteChange(index, 'stock_inicial', e.target.value)}
+                        className="input-field"
                         placeholder="Opc."
                       />
-                      <span className="flex items-center gap-1 shrink-0 w-14">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={v.pct_tarjeta !== undefined && v.pct_tarjeta !== '' ? v.pct_tarjeta : MARGEN_DEFAULT.tarjeta}
-                          onChange={(e) => handleVarianteChange(index, 'pct_tarjeta', e.target.value)}
-                          className="input-field text-center w-10"
-                          title="% margen"
-                        />
-                        <span className="text-gray-400 text-sm">%</span>
-                      </span>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Stock inicial</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={v.stock_inicial ?? ''}
-                      onChange={(e) => handleVarianteChange(index, 'stock_inicial', e.target.value)}
-                      className="input-field"
-                      placeholder="Opc."
-                    />
                   </div>
                 </div>
               </div>

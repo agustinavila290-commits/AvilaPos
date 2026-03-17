@@ -109,7 +109,6 @@ export default function PresupuestoPrint({ items, cliente, onClose }) {
 
             <div className="line-double" />
             <div className="center bold small" style={{ marginTop: '6px' }}>Presupuesto sin compromiso</div>
-            <div className="center small" style={{ marginTop: '2px' }}>No descuenta stock ni genera cobro</div>
             <div className="line-double" />
           </div>
         </div>
