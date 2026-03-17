@@ -277,10 +277,14 @@ class AFIPServiceReal:
             # Si no hay documento válido, AFIP exige Consumidor Final (99) con doc 0
             if not nro_doc:
                 wsfe.TipoDoc = 99
-                wsfe.NroDoc = '0'
+                wsfe.NroDoc = 0
             else:
                 wsfe.TipoDoc = self._get_tipo_documento(tipo_doc)
-                wsfe.NroDoc = nro_doc
+                try:
+                    wsfe.NroDoc = int(nro_doc)
+                except Exception:
+                    wsfe.TipoDoc = 99
+                    wsfe.NroDoc = 0
             
             # Totales
             total = Decimal(str(factura.total or 0))
@@ -322,8 +326,27 @@ class AFIPServiceReal:
             else:
                 wsfe.IVA = []
             
-            # Autorizar
-            wsfe.CAESolicitar()
+            # Autorizar (si falla, devolver XML para diagnosticar el campo problemático)
+            try:
+                wsfe.CAESolicitar()
+            except Exception as e:
+                xml_req = getattr(wsfe, 'XmlRequest', None) or getattr(wsfe, 'xml_request', None)
+                xml_res = getattr(wsfe, 'XmlResponse', None) or getattr(wsfe, 'xml_response', None)
+                def _clip(x, n=2500):
+                    if not x:
+                        return None
+                    s = str(x)
+                    return s if len(s) <= n else (s[:n] + '...<truncado>')
+                extra = {
+                    'error': str(e),
+                    'xml_request': _clip(xml_req),
+                    'xml_response': _clip(xml_res),
+                }
+                return {
+                    'success': False,
+                    'error': f"Error WSFE/AFIP: {str(e)}",
+                    'detalle': extra,
+                }
             
             # Verificar resultado
             if wsfe.Resultado == 'A':  # Aprobado
