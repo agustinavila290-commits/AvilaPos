@@ -587,6 +587,7 @@ export default function PuntoVentaNuevo() {
                     placeholder="Código del producto"
                     className="flex-1 search-input rounded-lg sm:rounded-xl"
                     autoFocus
+                    data-no-uppercase
                   />
                   <div className="flex gap-1.5">
                     <button
@@ -1010,6 +1011,7 @@ export default function PuntoVentaNuevo() {
                   placeholder="Buscar por código, nombre de producto o marca..."
                   className="w-full search-input px-4 py-3 text-base"
                   autoFocus
+                  data-no-uppercase
                 />
               </form>
             </div>
