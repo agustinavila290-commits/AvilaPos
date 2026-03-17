@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+import logging
 from .models import PuntoVenta, Factura, ItemFactura, ConfiguracionAFIP
 from .serializers import (
     PuntoVentaSerializer,
@@ -12,6 +13,7 @@ from .serializers import (
 )
 from .afip_service import AFIPService
 
+logger = logging.getLogger(__name__)
 
 class PuntoVentaViewSet(viewsets.ModelViewSet):
     """ViewSet para Puntos de Venta"""
@@ -77,9 +79,23 @@ class FacturaViewSet(viewsets.ModelViewSet):
                 'factura': serializer.data
             })
         else:
+            detalle = resultado.get('detalle')
+            if detalle:
+                # Loguear XML para diagnosticar errores de parseo/validación de AFIP
+                try:
+                    logger.error(
+                        "AFIP autorizar_factura fallo. factura_id=%s error=%s xml_request=%s xml_response=%s",
+                        factura.id,
+                        detalle.get('error') or resultado.get('error'),
+                        detalle.get('xml_request'),
+                        detalle.get('xml_response'),
+                    )
+                except Exception:
+                    pass
             return Response({
                 'success': False,
-                'error': resultado['error']
+                'error': resultado.get('error'),
+                'detalle': detalle,
             }, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['get'])
