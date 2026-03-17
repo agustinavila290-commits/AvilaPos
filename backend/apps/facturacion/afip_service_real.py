@@ -125,7 +125,8 @@ class AFIPServiceReal:
             dict: {'success': bool, 'cae': str, 'vencimiento': date, 'error': str}
         """
         try:
-            from pyafipws.wsfe import WSFEv1
+            # En PyAfipWs el cliente WSFE es wsfev1 (no wsfe)
+            from pyafipws.wsfev1 import WSFEv1
             
             # Verificar token válido
             if not self.config.token or not self.config.sign:
