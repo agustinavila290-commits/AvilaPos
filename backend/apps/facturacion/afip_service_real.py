@@ -173,7 +173,9 @@ class AFIPServiceReal:
             wsfe.FechaCbte = factura.fecha_emision.strftime('%Y%m%d')
             
             # Cliente
-            wsfe.TipoDoc = self._get_tipo_documento(factura.cliente_tipo_documento)
+            # `Factura` no guarda tipo de documento explícito: asumir por defecto DNI (Consumidor Final)
+            tipo_doc = getattr(factura, 'cliente_tipo_documento', None) or 'DNI'
+            wsfe.TipoDoc = self._get_tipo_documento(tipo_doc)
             wsfe.NroDoc = factura.cliente_cuit.replace('-', '').replace('.', '')
             
             # Totales
@@ -283,6 +285,7 @@ class AFIPServiceReal:
     def _generar_qr_data(self, factura, cae):
         """Genera datos para código QR según formato AFIP"""
         try:
+            tipo_doc = getattr(factura, 'cliente_tipo_documento', None) or 'DNI'
             datos = {
                 'ver': 1,
                 'fecha': factura.fecha_emision.strftime('%Y-%m-%d'),
@@ -293,7 +296,7 @@ class AFIPServiceReal:
                 'importe': float(factura.total),
                 'moneda': 'PES',
                 'ctz': 1,
-                'tipoDocRec': self._get_tipo_documento(factura.cliente_tipo_documento),
+                'tipoDocRec': self._get_tipo_documento(tipo_doc),
                 'nroDocRec': factura.cliente_cuit.replace('-', '').replace('.', ''),
                 'tipoCodAut': 'E',  # E = CAE
                 'codAut': str(cae)
