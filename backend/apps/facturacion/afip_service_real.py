@@ -150,8 +150,14 @@ class AFIPServiceReal:
                 if hasattr(wsaa, 'LoginCMS'):
                     wsaa.LoginCMS()
             
-            token = wsaa.token
-            sign = wsaa.sign
+            token = getattr(wsaa, 'Token', None) or getattr(wsaa, 'token', None)
+            sign = getattr(wsaa, 'Sign', None) or getattr(wsaa, 'sign', None)
+            if not token or not sign:
+                attrs = [a for a in dir(wsaa) if a.lower() in ('token', 'sign', 'ta', 'ticket', 'cms')]
+                raise AttributeError(
+                    "WSAA no expuso Token/Sign luego de LoginCMS. "
+                    f"Atributos relacionados: {attrs}"
+                )
             
             # Guardar en configuración
             self.config.token = token
