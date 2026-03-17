@@ -201,6 +201,28 @@ class AFIPServiceReal:
         try:
             # En PyAfipWs el cliente WSFE es wsfev1 (no wsfe)
             from pyafipws.wsfev1 import WSFEv1
+
+            def _to_decimal(value):
+                if value is None:
+                    return Decimal('0')
+                if isinstance(value, Decimal):
+                    return value
+                if isinstance(value, (int, float)):
+                    return Decimal(str(value))
+                s = str(value).strip()
+                if not s:
+                    return Decimal('0')
+                # Normalizar formatos comunes ES: "14.000,00" o "14000,00"
+                if ',' in s and '.' in s:
+                    s = s.replace('.', '').replace(',', '.')
+                elif ',' in s and '.' not in s:
+                    s = s.replace(',', '.')
+                return Decimal(s)
+
+            def _fmt_afip_amount(value):
+                dec = _to_decimal(value).quantize(Decimal('0.01'))
+                # AFIP/WSFE espera punto decimal
+                return format(dec, 'f')
             
             # Verificar token válido
             if not self.config.token or not self.config.sign:
@@ -287,40 +309,40 @@ class AFIPServiceReal:
                     wsfe.NroDoc = 0
             
             # Totales
-            total = Decimal(str(factura.total or 0))
-            neto = Decimal(str(factura.subtotal or 0))
-            iva = Decimal(str((factura.iva_105 or 0) + (factura.iva_21 or 0) + (factura.iva_27 or 0)))
+            total = _to_decimal(getattr(factura, 'total', 0))
+            neto = _to_decimal(getattr(factura, 'subtotal', 0))
+            iva = _to_decimal(getattr(factura, 'iva_105', 0)) + _to_decimal(getattr(factura, 'iva_21', 0)) + _to_decimal(getattr(factura, 'iva_27', 0))
             tot_conc = neto - iva
-            wsfe.ImpTotal = float(total)
-            wsfe.ImpTotConc = float(tot_conc if tot_conc > 0 else Decimal('0'))
-            wsfe.ImpNeto = float(neto)
+            wsfe.ImpTotal = _fmt_afip_amount(total)
+            wsfe.ImpTotConc = _fmt_afip_amount(tot_conc if tot_conc > 0 else Decimal('0'))
+            wsfe.ImpNeto = _fmt_afip_amount(neto)
             wsfe.ImpOpEx = 0.0
-            wsfe.ImpIVA = float(iva)
-            wsfe.ImpTrib = float(Decimal(str(factura.otros_tributos or 0)))
+            wsfe.ImpIVA = _fmt_afip_amount(iva)
+            wsfe.ImpTrib = _fmt_afip_amount(getattr(factura, 'otros_tributos', 0))
             
             # IVA
             if factura.iva_105 > 0:
                 wsfe.IVA = [
                     {
                         'Id': 4,  # 10.5%
-                        'BaseImp': float(factura.subtotal),
-                        'Importe': float(factura.iva_105)
+                        'BaseImp': _fmt_afip_amount(getattr(factura, 'subtotal', 0)),
+                        'Importe': _fmt_afip_amount(getattr(factura, 'iva_105', 0))
                     }
                 ]
             elif factura.iva_21 > 0:
                 wsfe.IVA = [
                     {
                         'Id': 5,  # 21%
-                        'BaseImp': float(factura.subtotal),
-                        'Importe': float(factura.iva_21)
+                        'BaseImp': _fmt_afip_amount(getattr(factura, 'subtotal', 0)),
+                        'Importe': _fmt_afip_amount(getattr(factura, 'iva_21', 0))
                     }
                 ]
             elif factura.iva_27 > 0:
                 wsfe.IVA = [
                     {
                         'Id': 6,  # 27%
-                        'BaseImp': float(factura.subtotal),
-                        'Importe': float(factura.iva_27)
+                        'BaseImp': _fmt_afip_amount(getattr(factura, 'subtotal', 0)),
+                        'Importe': _fmt_afip_amount(getattr(factura, 'iva_27', 0))
                     }
                 ]
             else:
