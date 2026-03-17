@@ -78,7 +78,11 @@ class AFIPServiceReal:
                     'error': 'Certificados no configurados'
                 }
             
-            wsaa.Conectar(ambiente=ambiente)
+            # Compatibilidad: algunas versiones de pyafipws no aceptan keyword `ambiente`
+            try:
+                wsaa.Conectar(ambiente=ambiente)
+            except TypeError:
+                wsaa.Conectar(ambiente)
             wsaa.CrearTra()
             wsaa.CargarCertificado(self.cert_path, self.key_path)
             
@@ -151,7 +155,11 @@ class AFIPServiceReal:
             
             # Crear instancia WSFEv1
             wsfe = WSFEv1()
-            wsfe.Conectar(ambiente=ambiente)
+            # Compatibilidad: algunas versiones de pyafipws no aceptan keyword `ambiente`
+            try:
+                wsfe.Conectar(ambiente=ambiente)
+            except TypeError:
+                wsfe.Conectar(ambiente)
             
             # Configurar autenticación
             wsfe.SetTicketAcceso(self.config.token, self.config.sign)
