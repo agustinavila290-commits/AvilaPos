@@ -37,6 +37,17 @@ else:
     # Producción: solo hosts específicos
     allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
     ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(',') if h.strip()]
+    # Fallback seguro: agregar dominios conocidos si no se configuró ALLOWED_HOSTS en el servidor
+    for h in [
+        'avilamotorepuesto.com.ar',
+        'www.avilamotorepuesto.com.ar',
+        'sistema.avilamotorepuesto.com.ar',
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+    ]:
+        if h not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(h)
 
 # En producción, confiar en el dominio para CSRF (admin y cookies)
 # La API /api/ está eximida por DisableCSRFForAPIMiddleware
