@@ -83,6 +83,8 @@ class VentaSerializer(serializers.ModelSerializer):
             'descuento_monto',
             'total',
             'metodo_pago',
+            'tarjeta_cupon_numero',
+            'tarjeta_codigo_autorizacion',
             'metodo_pago_display',
             'estado',
             'estado_display',
@@ -163,6 +165,18 @@ class VentaCreateSerializer(serializers.Serializer):
         allow_null=True,
         help_text='ID del pago Clover si se cobró con tarjeta vía Clover'
     )
+    tarjeta_cupon_numero = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        help_text='Número de cupón/comprobante del posnet para pago manual con tarjeta'
+    )
+    tarjeta_codigo_autorizacion = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        help_text='Código de autorización del posnet para pago manual con tarjeta'
+    )
     descuento_porcentaje = serializers.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -189,6 +203,21 @@ class VentaCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "No se puede aplicar descuento por porcentaje y monto a la vez"
             )
+
+        if data.get('metodo_pago') == Venta.MetodoPago.TARJETA:
+            cupon = (data.get('tarjeta_cupon_numero') or '').strip()
+            autorizacion = (data.get('tarjeta_codigo_autorizacion') or '').strip()
+            if not cupon:
+                raise serializers.ValidationError(
+                    {'tarjeta_cupon_numero': 'El número de cupón es obligatorio para pagos con tarjeta.'}
+                )
+            if not autorizacion:
+                raise serializers.ValidationError(
+                    {'tarjeta_codigo_autorizacion': 'El código de autorización es obligatorio para pagos con tarjeta.'}
+                )
+            data['tarjeta_cupon_numero'] = cupon
+            data['tarjeta_codigo_autorizacion'] = autorizacion
+
         return data
 
 

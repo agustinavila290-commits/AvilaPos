@@ -125,6 +125,8 @@ class VentaViewSet(viewsets.ModelViewSet):
                 deposito=deposito,
                 items=items,
                 metodo_pago=data['metodo_pago'],
+                tarjeta_cupon_numero=data.get('tarjeta_cupon_numero', ''),
+                tarjeta_codigo_autorizacion=data.get('tarjeta_codigo_autorizacion', ''),
                 descuento_porcentaje=data.get('descuento_porcentaje', 0),
                 descuento_monto=data.get('descuento_monto', 0)
             )

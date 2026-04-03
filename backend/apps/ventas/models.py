@@ -97,6 +97,20 @@ class Venta(models.Model):
         choices=MetodoPago.choices,
         verbose_name='Método de Pago'
     )
+    tarjeta_cupon_numero = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Número de cupón tarjeta',
+        help_text='Número de cupón/comprobante del posnet para pagos con tarjeta'
+    )
+    tarjeta_codigo_autorizacion = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Código de autorización tarjeta',
+        help_text='Código de autorización informado por el posnet para pagos con tarjeta'
+    )
     
     # Estado
     estado = models.CharField(

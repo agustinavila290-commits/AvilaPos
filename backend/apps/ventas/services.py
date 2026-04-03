@@ -21,6 +21,8 @@ class VentaService:
         deposito,
         items,  # Lista de dicts: [{variante, cantidad, precio_unitario, descuento_unitario}]
         metodo_pago,
+        tarjeta_cupon_numero='',
+        tarjeta_codigo_autorizacion='',
         descuento_porcentaje=0,
         descuento_monto=0
     ):
@@ -95,6 +97,8 @@ class VentaService:
             descuento_monto=descuento_monto,
             total=total,
             metodo_pago=metodo_pago,
+            tarjeta_cupon_numero=(tarjeta_cupon_numero or '').strip(),
+            tarjeta_codigo_autorizacion=(tarjeta_codigo_autorizacion or '').strip(),
             estado=Venta.EstadoVenta.COMPLETADA
         )
         

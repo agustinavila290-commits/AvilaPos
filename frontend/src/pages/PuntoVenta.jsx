@@ -9,7 +9,6 @@ import { createVenta } from '../services/ventasService';
 import { crearTicket } from '../services/cuentaCorrienteService';
 import { getDepositoPrincipal, getStocksPorVariante } from '../services/inventarioService';
 import { getConfiguracionPOS } from '../services/configuracionService';
-import { procesarPagoClover } from '../services/cloverService';
 import productosService from '../services/productosService';
 import { useAuth } from '../hooks/useAuth';
 import SeleccionarClienteModal from '../components/SeleccionarClienteModal';
@@ -52,8 +51,9 @@ export default function PuntoVentaNuevo() {
   // Presupuesto (imprimir sin cobro)
   const [mostrarPresupuesto, setMostrarPresupuesto] = useState(false);
 
-  // Clover: pago con tarjeta en dispositivo
-  const [procesandoPagoClover, setProcesandoPagoClover] = useState(false);
+  // Tarjeta manual: datos del ticket del posnet
+  const [tarjetaCuponNumero, setTarjetaCuponNumero] = useState('');
+  const [tarjetaCodigoAutorizacion, setTarjetaCodigoAutorizacion] = useState('');
 
   const focusCodigo = useCallback(() => {
     // Evitar robar foco si hay modales abiertos
@@ -463,38 +463,20 @@ export default function PuntoVentaNuevo() {
     }
 
     // Flujo venta normal (Cobrar)
-    const total = calcularTotal();
-    let cloverPagoId = null;
+    if (metodoPago === 'TARJETA') {
+      if (!tarjetaCuponNumero.trim()) {
+        setError('El número de cupón es obligatorio para tarjeta');
+        return;
+      }
+      if (!tarjetaCodigoAutorizacion.trim()) {
+        setError('El código de autorización es obligatorio para tarjeta');
+        return;
+      }
+    }
 
     try {
       setSubmitting(true);
       setError('');
-
-      if (metodoPago === 'TARJETA') {
-        setProcesandoPagoClover(true);
-        try {
-          const resultado = await procesarPagoClover({
-            monto: Number(total),
-            descripcion: `Venta - ${items.length} producto(s)`,
-            orden_id: `venta_${Date.now()}`
-          });
-          if (!resultado.exito) {
-            setError(resultado.error || 'Pago rechazado o cancelado');
-            setProcesandoPagoClover(false);
-            setSubmitting(false);
-            return;
-          }
-          cloverPagoId = resultado.clover_pago_id ?? null;
-        } catch (err) {
-          const msg = err.response?.data?.error || err.message || 'Error al procesar pago con Clover';
-          setError(msg);
-          setProcesandoPagoClover(false);
-          setSubmitting(false);
-          return;
-        } finally {
-          setProcesandoPagoClover(false);
-        }
-      }
 
       const ventaData = {
         ...(cliente ? { cliente_id: cliente.id } : {}),
@@ -508,7 +490,10 @@ export default function PuntoVentaNuevo() {
         metodo_pago: metodoPago,
         descuento_porcentaje: 0,
         descuento_monto: 0,
-        ...(cloverPagoId ? { clover_pago_id: cloverPagoId } : {})
+        ...(metodoPago === 'TARJETA' ? {
+          tarjeta_cupon_numero: tarjetaCuponNumero.trim(),
+          tarjeta_codigo_autorizacion: tarjetaCodigoAutorizacion.trim(),
+        } : {})
       };
 
       const response = await createVenta(ventaData);
@@ -529,6 +514,8 @@ export default function PuntoVentaNuevo() {
     setError('');
     setAlertaMargen('');
     setDescripcionTicket('');
+    setTarjetaCuponNumero('');
+    setTarjetaCodigoAutorizacion('');
     setMetodoPago('EFECTIVO');
     setCodigoBusqueda('');
     codigoInputRef.current?.focus();
@@ -539,21 +526,6 @@ export default function PuntoVentaNuevo() {
   
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
-      {/* Modal: Procesando pago con Clover */}
-      {procesandoPagoClover && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4 text-center">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Procesando pago</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Pase la tarjeta en el dispositivo Clover
-            </p>
-            <div className="flex justify-center">
-              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header ULTRA COMPACTO - Soft UI */}
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-700 dark:to-blue-800 text-white px-2 py-1.5 sm:px-3 sm:py-2 shadow-lg">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
@@ -885,6 +857,33 @@ export default function PuntoVentaNuevo() {
                     placeholder="Opcional: descripción del trabajo"
                   />
                 </div>
+              ) : metodoPago === 'TARJETA' ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Número de cupón: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={tarjetaCuponNumero}
+                      onChange={(e) => setTarjetaCuponNumero(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
+                      placeholder="Comprobante del posnet"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Código autorización: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={tarjetaCodigoAutorizacion}
+                      onChange={(e) => setTarjetaCodigoAutorizacion(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm"
+                      placeholder="Código de autorización"
+                    />
+                  </div>
+                </>
               ) : (
                 <>
                   <div>
