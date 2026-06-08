@@ -1,236 +1,187 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { tiendaApi } from '../../services/api'
+import { WA_NUMBER } from '../../config'
+import SEO from '../../components/SEO'
+import ProductCard from '../../components/tienda/ProductCard'
+import ProductCardSkeleton from '../../components/tienda/ProductCardSkeleton'
+import BuscadorPorMoto from '../../components/tienda/BuscadorPorMoto'
 
-const categorias = [
-  { slug: 'motor', label: 'Motor', icon: '⚙️' },
-  { slug: 'frenos', label: 'Frenos', icon: '🛑' },
-  { slug: 'transmision', label: 'Transmisión', icon: '⛓️' },
-  { slug: 'electrico', label: 'Eléctrico', icon: '💡' },
-  { slug: 'filtros', label: 'Filtros y aceites', icon: '🛢️' },
-  { slug: 'accesorios', label: 'Accesorios', icon: '🔧' },
-]
-
-const destacados = [
-  {
-    nombre: 'Kit de servicio completo',
-    categoria: 'Filtros y aceites',
-    precio: '$ 19.900',
-    imagen:
-      'https://images.unsplash.com/photo-1617487888406-cc57c3201275?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    nombre: 'Juego de pastillas de freno',
-    categoria: 'Frenos',
-    precio: '$ 8.500',
-    imagen:
-      'https://images.unsplash.com/photo-1514481538271-cf9f99627ab3?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    nombre: 'Cadena y corona reforzadas',
-    categoria: 'Transmisión',
-    precio: '$ 25.900',
-    imagen:
-      'https://images.unsplash.com/photo-1581539250439-c96689b516dd?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    nombre: 'Kit de luces LED',
-    categoria: 'Eléctrico',
-    precio: '$ 15.700',
-    imagen:
-      'https://images.unsplash.com/photo-1530043764816-4fffea3bc4dc?auto=format&fit=crop&w=600&q=80',
-  },
-]
-
-const seccionesProducto = [
-  {
-    id: 'repuestos-destacados',
-    titulo: 'Repuestos destacados',
-    subtitulo: 'Los repuestos que más salen en el mostrador',
-    imagen:
-      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 'iluminacion',
-    titulo: 'Ópticas y luces',
-    subtitulo: 'Que te vean bien en la ruta y la ciudad',
-    imagen:
-      'https://images.unsplash.com/photo-1517940310602-75ae46d48865?auto=format&fit=crop&w=900&q=80',
-  },
-]
-
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1400&q=80'
+function getVistosRecientemente() {
+  try {
+    return JSON.parse(localStorage.getItem('avila_vistos') || '[]')
+  } catch {
+    return []
+  }
+}
 
 export default function HomePage() {
+  const navigate = useNavigate()
+  const [categorias, setCategorias] = useState([])
+  const [marcas, setMarcas] = useState([])
+  const [destacados, setDestacados] = useState([])
+  const [loadingDestacados, setLoadingDestacados] = useState(true)
+  const [vistos, setVistos] = useState([])
+
+  useEffect(() => {
+    setVistos(getVistosRecientemente())
+    tiendaApi.getCategorias().then(r => setCategorias(r.data)).catch(() => {})
+    tiendaApi.getMarcas().then(r => setMarcas(r.data)).catch(() => {})
+    tiendaApi.getProductos({ page: 1, page_size: 8 })
+      .then(r => setDestacados(r.data.results))
+      .catch(() => {})
+      .finally(() => setLoadingDestacados(false))
+  }, [])
+
   return (
-    <>
-      {/* HERO PRINCIPAL */}
-      <section className="home-hero">
-        <div className="home-hero-bg">
-          <img src={HERO_IMAGE} alt="Moto en showroom" loading="lazy" />
-          <div className="home-hero-bg-overlay" />
-        </div>
-        <div className="container home-hero-inner">
-          <div className="home-hero-content">
-            <p className="home-hero-kicker">Moto repuestos y accesorios</p>
-            <h1 className="home-hero-title">
-              Todo para tu moto
-              <span className="home-hero-title-highlight"> en un solo lugar</span>
-            </h1>
-            <p className="home-hero-text">
-              Repuestos y accesorios de primeras marcas. Asesoramiento experto y stock pensado para que tu moto
-              esté siempre lista.
-            </p>
-            <div className="home-hero-actions">
-              <Link to="/catalogo" className="btn btn-primary">
-                Ver catálogo completo
-              </Link>
-              <Link to="/contacto" className="btn btn-outline">
-                Hablar con un asesor
-              </Link>
-            </div>
-            <div className="home-hero-badges">
-              <span>✔ Envíos a todo el país</span>
-              <span>✔ Retiro en sucursal</span>
-              <span>✔ Planes de pago</span>
-            </div>
-          </div>
-          <div className="home-hero-banner">
-            <div className="home-hero-banner-tag">Servicio</div>
-            <p className="home-hero-banner-kicker">Plan Avila Taller</p>
-            <p className="home-hero-banner-title">Tus repuestos, siempre a tiempo</p>
-            <p className="home-hero-banner-text">
-              Armamos el pedido completo de repuestos para tu trabajo en el taller o mantenimiento de tu moto.
-            </p>
-            <span className="home-hero-banner-link">Consultar por WhatsApp →</span>
+    <div>
+      <SEO />
+
+      {/* Hero */}
+      <section className="bg-brand-blue-dark text-white py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Repuestos y Accesorios para tu Moto
+          </h1>
+          <p className="text-blue-200 text-lg mb-8">
+            Stock real · Retiro en local · Av. Pte. Castillo 1165
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              to="/catalogo"
+              className="bg-white text-brand-blue font-bold px-8 py-3 rounded-xl hover:bg-blue-50 transition-colors"
+            >
+              Ver catálogo completo
+            </Link>
+            <a
+              href={`https://wa.me/${WA_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border-2 border-white text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/10 transition-colors"
+            >
+              Consultar por WhatsApp
+            </a>
           </div>
         </div>
       </section>
 
-      {/* CATEGORÍAS / ICONOS */}
-      <section className="home-section home-categories">
-        <div className="container">
-          <div className="home-section-header">
-            <h2>Categorías principales</h2>
-            <p>Encontrá rápido lo que necesitás para tu moto.</p>
-          </div>
-          <div className="home-categories-grid">
-            {categorias.map((cat) => (
-              <Link
-                key={cat.slug}
-                to={`/catalogo?categoria=${cat.slug}`}
-                className="home-category-card"
+      {/* Buscador por moto */}
+      <BuscadorPorMoto />
+
+      {/* Categorías */}
+      {categorias.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 py-12">
+          <h2 className="text-xl font-bold text-brand-text mb-5">Categorías</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {categorias.slice(0, 12).map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => navigate(`/catalogo?categoria=${cat.id}`)}
+                className="card p-3 text-center hover:border-brand-blue hover:shadow-md transition-all group cursor-pointer"
               >
-                <div className="home-category-icon" aria-hidden="true">
-                  {cat.icon}
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mx-auto mb-2 group-hover:bg-brand-blue group-hover:text-white transition-colors">
+                  <svg className="w-5 h-5 text-brand-blue group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
                 </div>
-                <span className="home-category-label">{cat.label}</span>
-              </Link>
+                <p className="text-xs font-medium text-brand-text leading-tight capitalize">{cat.nombre.toLowerCase()}</p>
+              </button>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* CARRUSEL SIMPLE DE PROMOS (scroll horizontal) */}
-      <section className="home-section home-promos">
-        <div className="container">
-          <div className="home-section-header">
-            <h2>Aprovechá nuestras promociones</h2>
-          </div>
-          <div className="home-promos-strip" aria-label="Promociones destacadas">
-            {destacados.map((item, idx) => (
-              <article key={idx} className="home-promo-card">
-                <div className="home-promo-image">
-                  <img src={item.imagen} alt={item.nombre} loading="lazy" />
-                </div>
-                <div className="home-promo-body">
-                  <p className="home-promo-category">{item.categoria}</p>
-                  <h3 className="home-promo-name">{item.nombre}</h3>
-                  <p className="home-promo-price">{item.precio}</p>
-                  <button type="button" className="btn btn-primary home-promo-btn">
-                    Ver detalle
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* SECCIONES DE PRODUCTO + BANNERS */}
-      {seccionesProducto.map((sec) => (
-        <section key={sec.id} className="home-section home-products">
-          <div className="container">
-            <div className="home-section-header home-section-header-row">
-              <div>
-                <h2>{sec.titulo}</h2>
-                <p>{sec.subtitulo}</p>
-              </div>
-              <Link to={`/catalogo?seccion=${sec.id}`} className="home-section-link">
-                Ver todo →
+          {categorias.length > 12 && (
+            <div className="mt-4 text-center">
+              <Link to="/catalogo" className="text-sm text-brand-blue hover:underline">
+                Ver todas las categorías →
               </Link>
             </div>
+          )}
+        </section>
+      )}
 
-            <div className="home-products-grid">
-              {Array.from({ length: 4 }).map((_, idx) => (
-                <article key={idx} className="home-product-card">
-                  <div className="home-product-image">
-                    <img src={sec.imagen} alt={sec.titulo} loading="lazy" />
-                  </div>
-                  <div className="home-product-body">
-                    <p className="home-product-category">Ejemplo</p>
-                    <h3 className="home-product-name">Producto de muestra Avila #{idx + 1}</h3>
-                    <p className="home-product-price">$ 00.000</p>
-                  </div>
-                </article>
-              ))}
-            </div>
+      {/* Marcas — primeras 15 con productos */}
+      {marcas.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 pb-10">
+          <h2 className="text-xl font-bold text-brand-text mb-5">Marcas</h2>
+          <div className="flex flex-wrap gap-2">
+            {marcas.slice(0, 15).map(m => (
+              <button
+                key={m.id}
+                onClick={() => navigate(`/catalogo?marca=${m.id}`)}
+                className="px-4 py-2 rounded-full border border-brand-border bg-white text-sm font-medium text-brand-muted hover:border-brand-blue hover:text-brand-blue hover:bg-blue-50 transition-all"
+              >
+                {m.nombre}
+              </button>
+            ))}
+            {marcas.length > 15 && (
+              <button
+                onClick={() => navigate('/catalogo')}
+                className="px-4 py-2 rounded-full border border-brand-border bg-white text-sm font-medium text-brand-blue hover:bg-blue-50 transition-all"
+              >
+                Ver más →
+              </button>
+            )}
           </div>
         </section>
-      ))}
+      )}
 
-      {/* BANNER INTERMEDIO */}
-      <section className="home-banner-wide">
-        <div className="container home-banner-wide-inner">
-          <div>
-            <p className="home-banner-wide-kicker">Servicio Avila</p>
-            <h2>El plan ideal para vos y tu moto</h2>
-            <p>
-              Mantenimiento, repuestos originales y asesoramiento personalizado para que disfrutes cada kilómetro
-              con total tranquilidad.
-            </p>
-          </div>
-          <Link to="/contacto" className="btn btn-primary">
-            Consultar ahora
+      {/* Productos destacados */}
+      <section className="max-w-6xl mx-auto px-4 pb-12">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-xl font-bold text-brand-text">Productos</h2>
+          <Link to="/catalogo" className="text-sm text-brand-blue hover:underline">
+            Ver todos →
           </Link>
         </div>
+
+        {loadingDestacados ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+          </div>
+        ) : destacados.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {destacados.map(p => <ProductCard key={p.id} producto={p} />)}
+          </div>
+        ) : (
+          <p className="text-brand-muted text-center py-8">No hay productos disponibles.</p>
+        )}
       </section>
 
-      {/* SECCIÓN FINAL / SHOWROOM */}
-      <section className="home-section home-showroom">
-        <div className="container home-showroom-inner">
-          <div className="home-showroom-media">
-            <img
-              src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80"
-              alt="Showroom de motos"
-              loading="lazy"
-            />
+      {/* Visto recientemente */}
+      {vistos.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 pb-12">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold text-brand-text">Visto recientemente</h2>
+            <button
+              onClick={() => { localStorage.removeItem('avila_vistos'); setVistos([]) }}
+              className="text-xs text-brand-muted hover:text-brand-red transition-colors"
+            >
+              Limpiar
+            </button>
           </div>
-          <div className="home-showroom-content">
-            <h2>Visitá nuestro local</h2>
-            <p>
-              Vení a ver el stock de repuestos y accesorios. Te ayudamos a conseguir la pieza justa para tu moto.
-            </p>
-            <ul>
-              <li>Asesoramiento especializado en repuestos de motos</li>
-              <li>Amplia variedad de repuestos y accesorios</li>
-              <li>Podés traer la muestra de la pieza para comparar</li>
-            </ul>
-            <Link to="/contacto" className="btn btn-outline">
-              Ver cómo llegar
-            </Link>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {vistos.slice(0, 4).map(p => <ProductCard key={p.id} producto={p} />)}
           </div>
+        </section>
+      )}
+
+      {/* Banner WhatsApp */}
+      <section className="bg-brand-green">
+        <div className="max-w-4xl mx-auto px-4 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="text-white font-bold text-lg">¿No encontrás lo que buscás?</p>
+            <p className="text-green-100 text-sm">Consultanos por WhatsApp y te asesoramos.</p>
+          </div>
+          <a
+            href={`https://wa.me/${WA_NUMBER}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white text-brand-green font-bold px-6 py-3 rounded-xl hover:bg-green-50 transition-colors whitespace-nowrap"
+          >
+            Escribinos →
+          </a>
         </div>
       </section>
-    </>
+    </div>
   )
 }

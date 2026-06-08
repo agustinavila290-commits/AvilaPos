@@ -17,8 +17,13 @@ from apps.inventario.services import InventarioService
 from apps.inventario.models import MovimientoStock
 from apps.ventas.models import Venta, DetalleVenta
 from apps.usuarios.models import Usuario
-from .models import PuntoRetiro
+from .models import PuntoRetiro, ClienteWeb, PedidoWeb, ModeloMoto
 from .mercadopago import crear_preferencia_para_venta
+from .auth import (
+    hash_password, verify_password,
+    generate_token, get_cliente_from_request,
+    verify_google_token,
+)
 
 
 def _get_deposito_principal():
@@ -44,7 +49,9 @@ def _variante_a_dict(v, stock_cantidad=0, incluir_marca_cat=True):
     }
     if incluir_marca_cat:
         data['marca'] = v.producto_base.marca.nombre if v.producto_base else ''
+        data['marca_id'] = v.producto_base.marca_id if v.producto_base else None
         data['categoria'] = v.producto_base.categoria.nombre if v.producto_base else ''
+        data['categoria_id'] = v.producto_base.categoria_id if v.producto_base else None
         data['descripcion'] = (v.producto_base.descripcion or '')[:300]
         if v.producto_base.imagen:
             data['imagen_url'] = v.producto_base.imagen.url
@@ -96,7 +103,18 @@ def productos_list(request):
             Q(producto_base__marca__nombre__icontains=search)
         )
 
-    qs = qs.order_by('producto_base__nombre', 'nombre_variante')
+    modelo_id = request.query_params.get('modelo')
+    if modelo_id:
+        qs = qs.filter(producto_base__modelos_compatibles__id=modelo_id)
+
+    _ORDERING = {
+        'nombre': ('producto_base__nombre', 'nombre_variante'),
+        '-nombre': ('-producto_base__nombre', '-nombre_variante'),
+        'precio_web': ('precio_web',),
+        '-precio_web': ('-precio_web',),
+    }
+    ordering_param = request.query_params.get('ordering', '').strip()
+    qs = qs.order_by(*_ORDERING.get(ordering_param, ('producto_base__nombre', 'nombre_variante')))
 
     page_size = min(int(request.query_params.get('page_size', 24)), 100)
     paginator = Paginator(qs, page_size)
@@ -177,12 +195,57 @@ def puntos_retiro_list(request):
     return Response(data)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def modelos_moto_list(request):
+    """Lista de modelos de moto activos para el selector de compatibilidad."""
+    modelos = ModeloMoto.objects.filter(activo=True).values('id', 'marca', 'modelo', 'anio')
+    return Response(list(modelos))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def productos_por_moto(request, moto_id):
+    """
+    Devuelve los productos compatibles con una moto específica (para el POS).
+    Incluye variantes con stock_actual.
+    """
+    try:
+        moto = ModeloMoto.objects.get(id=moto_id, activo=True)
+    except ModeloMoto.DoesNotExist:
+        return Response({'error': 'Moto no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    from apps.productos.models import VarianteProducto
+    from apps.inventario.models import Stock
+    from django.db.models import Sum
+
+    productos_base = moto.productos.filter(activo=True).prefetch_related('variantes', 'marca')
+    data = []
+    for pb in productos_base:
+        for variante in pb.variantes.filter(activo=True):
+            stock_actual = Stock.objects.filter(
+                variante=variante, deposito__activo=True
+            ).aggregate(total=Sum('cantidad'))['total'] or 0
+            data.append({
+                'id': variante.id,
+                'codigo': variante.codigo,
+                'nombre_completo': variante.nombre_completo,
+                'nombre_variante': variante.nombre_variante,
+                'marca': pb.marca.nombre,
+                'precio_mostrador': float(variante.precio_mostrador),
+                'precio_tarjeta': float(variante.precio_tarjeta),
+                'stock_actual': stock_actual,
+            })
+
+    return Response({'moto': str(moto), 'count': len(data), 'results': data})
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def mercadopago_crear_preferencia(request):
     """
     Crea una preferencia de pago de Mercado Pago para una venta web existente.
-    Body: { venta_id: number }
+    Body: { venta_id: number, back_urls?: {success, pending, failure}, auto_return?: 'approved' }
     """
     data = request.data or {}
     venta_id = data.get('venta_id')
@@ -203,7 +266,10 @@ def mercadopago_crear_preferencia(request):
     if not es_web:
         return Response({'error': 'La venta no corresponde a un pedido web'}, status=status.HTTP_400_BAD_REQUEST)
 
-    pref = crear_preferencia_para_venta(venta)
+    back_urls = data.get('back_urls') or {}
+    auto_return = data.get('auto_return') or None
+
+    pref = crear_preferencia_para_venta(venta, back_urls=back_urls, auto_return=auto_return)
     return Response(pref, status=status.HTTP_200_OK)
 
 
@@ -436,6 +502,10 @@ def pedido_create(request):
                     observaciones=f'Venta web #{venta.numero}. {observaciones}',
                 )
 
+        # Vincular al ClienteWeb si está autenticado
+        cliente_web = get_cliente_from_request(request)
+        PedidoWeb.objects.create(venta=venta, cliente_web=cliente_web)
+
         return Response({
             'ok': True,
             'venta_id': venta.id,
@@ -508,3 +578,177 @@ def admin_pedido_detail(request, pk):
 
     serializer = VentaSerializer(venta)
     return Response(serializer.data)
+
+
+# ============================================================================ #
+# Auth de clientes web                                                           #
+# ============================================================================ #
+
+def _cliente_dict(cliente: ClienteWeb) -> dict:
+    return {
+        'id': cliente.id,
+        'nombre': cliente.nombre,
+        'email': cliente.email,
+        'avatar_url': cliente.avatar_url,
+        'fecha_registro': cliente.fecha_registro.isoformat(),
+    }
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def auth_registro(request):
+    """
+    Registro con email y contraseña.
+    Body: { nombre, email, password }
+    """
+    data = request.data or {}
+    nombre = (data.get('nombre') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+
+    if not nombre or not email or not password:
+        return Response({'error': 'nombre, email y password son obligatorios'}, status=400)
+    if len(password) < 6:
+        return Response({'error': 'La contraseña debe tener al menos 6 caracteres'}, status=400)
+    if ClienteWeb.objects.filter(email=email).exists():
+        return Response({'error': 'Ya existe una cuenta con ese email'}, status=400)
+
+    cliente = ClienteWeb.objects.create(
+        nombre=nombre,
+        email=email,
+        password_hash=hash_password(password),
+    )
+    return Response({
+        'token': generate_token(cliente),
+        'user': _cliente_dict(cliente),
+    }, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def auth_login(request):
+    """
+    Login con email y contraseña.
+    Body: { email, password }
+    """
+    data = request.data or {}
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+
+    try:
+        cliente = ClienteWeb.objects.get(email=email, activo=True)
+    except ClienteWeb.DoesNotExist:
+        return Response({'error': 'Email o contraseña incorrectos'}, status=401)
+
+    if not cliente.password_hash or not verify_password(password, cliente.password_hash):
+        return Response({'error': 'Email o contraseña incorrectos'}, status=401)
+
+    return Response({
+        'token': generate_token(cliente),
+        'user': _cliente_dict(cliente),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def auth_google(request):
+    """
+    Login / registro con Google.
+    Body: { id_token: <Google ID token del frontend> }
+    """
+    data = request.data or {}
+    id_token = data.get('id_token') or ''
+    if not id_token:
+        return Response({'error': 'id_token es obligatorio'}, status=400)
+
+    payload = verify_google_token(id_token)
+    if not payload:
+        return Response({'error': 'Token de Google inválido'}, status=401)
+
+    google_id = payload.get('sub') or ''
+    email = (payload.get('email') or '').lower()
+    nombre = payload.get('name') or email.split('@')[0]
+    avatar = payload.get('picture') or ''
+
+    if not email:
+        return Response({'error': 'No se pudo obtener el email de Google'}, status=400)
+
+    # Buscar por google_id o email (puede ser un usuario que ya se registró con email)
+    cliente = (
+        ClienteWeb.objects.filter(google_id=google_id).first()
+        or ClienteWeb.objects.filter(email=email).first()
+    )
+
+    if cliente:
+        # Actualizar datos de Google si es la primera vez con Google
+        update_fields = []
+        if not cliente.google_id:
+            cliente.google_id = google_id
+            update_fields.append('google_id')
+        if avatar and not cliente.avatar_url:
+            cliente.avatar_url = avatar
+            update_fields.append('avatar_url')
+        if update_fields:
+            cliente.save(update_fields=update_fields)
+    else:
+        cliente = ClienteWeb.objects.create(
+            nombre=nombre,
+            email=email,
+            google_id=google_id,
+            avatar_url=avatar,
+        )
+
+    return Response({
+        'token': generate_token(cliente),
+        'user': _cliente_dict(cliente),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def auth_me(request):
+    """Devuelve los datos del cliente autenticado."""
+    cliente = get_cliente_from_request(request)
+    if not cliente:
+        return Response({'error': 'No autenticado'}, status=401)
+    return Response(_cliente_dict(cliente))
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def mis_pedidos(request):
+    """Historial de pedidos del cliente autenticado."""
+    cliente = get_cliente_from_request(request)
+    if not cliente:
+        return Response({'error': 'No autenticado'}, status=401)
+
+    pedidos_web = (
+        PedidoWeb.objects
+        .filter(cliente_web=cliente)
+        .select_related('venta')
+        .prefetch_related('venta__detalles__variante')
+        .order_by('-fecha')
+    )
+
+    results = []
+    for pw in pedidos_web:
+        v = pw.venta
+        items = []
+        for det in v.detalles.all():
+            nombre_v = getattr(det.variante, 'nombre_completo', str(det.variante))
+            items.append({
+                'nombre': nombre_v,
+                'cantidad': det.cantidad,
+                'precio_unitario': str(det.precio_unitario),
+                'subtotal': str(det.subtotal),
+            })
+        results.append({
+            'id': pw.id,
+            'venta_numero': v.numero,
+            'fecha': pw.fecha.isoformat(),
+            'total': str(v.total),
+            'estado': v.estado,
+            'items': items,
+        })
+
+    return Response(results)

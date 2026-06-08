@@ -58,19 +58,19 @@ export default function PresupuestoPrint({ items, cliente, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-600 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Presupuesto (sin cobro)</h2>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-800">Presupuesto (sin cobro)</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl leading-none"
+            className="text-slate-500 hover:text-slate-700 text-2xl leading-none"
             aria-label="Cerrar"
           >
             ×
           </button>
         </div>
 
-        <div className="px-4 py-3 max-h-[70vh] overflow-auto bg-gray-100 dark:bg-slate-700/30">
+        <div className="px-4 py-3 max-h-[70vh] overflow-auto bg-slate-50">
           <div ref={printRef} className="bg-white p-3 mx-auto" style={{ width: '72mm', fontFamily: 'Courier New, monospace', fontSize: '11px' }}>
             <div className="line-double" />
             <div className="center bold" style={{ fontSize: '14px' }}>PRESUPUESTO</div>
@@ -113,10 +113,10 @@ export default function PresupuestoPrint({ items, cliente, onClose }) {
           </div>
         </div>
 
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-600 flex justify-end gap-2">
+        <div className="px-4 py-3 border-t border-slate-200 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 dark:bg-slate-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500"
+            className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300"
           >
             Cerrar
           </button>

@@ -39,9 +39,28 @@ build/
 *~
 .DS_Store
 
-# Backups
+# Backups y datos sensibles
 *.backup
 *.bak
+backups/
+backend/backups/
+
+# Certificados y claves privadas (NUNCA subir al repo)
+*.key
+*.pem
+*.crt
+*.p12
+certs/
+backend/certs/
+
+# Entornos virtuales
+.venv/
+backend/venv/
+
+# Archivos de producción sensibles
+backend/.env.production
+avila-web/.env.production
+*.env.local
 
 # Electron
 out/

@@ -1,5 +1,20 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Proveedor, Compra, DetalleCompra
+
+
+def _badge(bg, color, texto):
+    return format_html(
+        '<span style="background:{};color:{};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;white-space:nowrap">{}</span>',
+        bg, color, texto
+    )
+
+
+_ESTADO_COMPRA_COLORS = {
+    'COMPLETADA': ('#dcfce7', '#166534', 'Completada'),
+    'PENDIENTE':  ('#fef9c3', '#854d0e', 'Pendiente'),
+    'ANULADA':    ('#fee2e2', '#991b1b', 'Anulada'),
+}
 
 
 @admin.register(Proveedor)
@@ -37,7 +52,7 @@ class CompraAdmin(admin.ModelAdmin):
         'fecha',
         'total',
         'numero_factura',
-        'estado'
+        'badge_estado',
     ]
     list_filter = ['estado', 'proveedor', 'fecha']
     search_fields = [
@@ -54,12 +69,16 @@ class CompraAdmin(admin.ModelAdmin):
     inlines = [DetalleCompraInline]
     date_hierarchy = 'fecha'
     
+    def badge_estado(self, obj):
+        bg, color, label = _ESTADO_COMPRA_COLORS.get(obj.estado, ('#f3f4f6', '#374151', obj.estado))
+        return _badge(bg, color, label)
+    badge_estado.short_description = 'Estado'
+    badge_estado.admin_order_field = 'estado'
+
     def has_add_permission(self, request):
-        # Las compras se registran desde la API
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
-        # No se pueden eliminar compras
         return False
 
 

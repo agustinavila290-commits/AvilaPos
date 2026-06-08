@@ -1,7 +1,10 @@
+from pathlib import Path
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 import logging
 from .models import PuntoVenta, Factura, ItemFactura, ConfiguracionAFIP
@@ -12,6 +15,8 @@ from .serializers import (
     ConfiguracionAFIPSerializer
 )
 from .afip_service import AFIPService
+from .pdf_generator import generar_pdf_factura
+from apps.usuarios.permissions import IsAdministrador
 
 logger = logging.getLogger(__name__)
 
@@ -52,26 +57,42 @@ class FacturaViewSet(viewsets.ModelViewSet):
     def autorizar_afip(self, request, pk=None):
         """Solicitar autorización a AFIP"""
         factura = self.get_object()
-        
+
         if factura.estado != Factura.Estado.BORRADOR:
             return Response({
                 'success': False,
                 'error': 'Solo se pueden autorizar facturas en estado Borrador'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Usar servicio AFIP
-        # Obtener configuración AFIP
+
+        # Validar datos de tarjeta si la venta fue pagada con TARJETA
+        venta = factura.venta
+        if venta and venta.metodo_pago == 'TARJETA':
+            if not (venta.tarjeta_cupon_numero or '').strip() or not (venta.tarjeta_codigo_autorizacion or '').strip():
+                return Response({
+                    'success': False,
+                    'error': 'Para facturar una venta con tarjeta, cargá el número de cupón y el código de autorización del posnet.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         config_afip = ConfiguracionAFIP.objects.first()
         if not config_afip:
             return Response({
                 'success': False,
                 'error': 'No hay configuración AFIP. Configure primero en /api/facturacion/configuracion-afip/'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         afip_service = AFIPService(config=config_afip)
         resultado = afip_service.autorizar_factura(factura)
-        
+
         if resultado['success']:
+            # Auto-generar y guardar PDF en disco
+            try:
+                pdf_buffer, ruta_relativa = generar_pdf_factura(factura, guardar_en_disco=True)
+                if ruta_relativa:
+                    factura.pdf_archivo = ruta_relativa
+                    factura.save(update_fields=['pdf_archivo'])
+            except Exception as e:
+                logger.warning("No se pudo generar el PDF automáticamente para factura %s: %s", factura.id, e)
+
             serializer = FacturaSerializer(factura)
             return Response({
                 'success': True,
@@ -81,7 +102,6 @@ class FacturaViewSet(viewsets.ModelViewSet):
         else:
             detalle = resultado.get('detalle')
             if detalle:
-                # Loguear XML para diagnosticar errores de parseo/validación de AFIP
                 try:
                     logger.error(
                         "AFIP autorizar_factura fallo. factura_id=%s error=%s xml_request=%s xml_response=%s",
@@ -97,20 +117,47 @@ class FacturaViewSet(viewsets.ModelViewSet):
                 'error': resultado.get('error'),
                 'detalle': detalle,
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @action(detail=True, methods=['get'])
     def generar_pdf(self, request, pk=None):
-        """Generar PDF de la factura"""
+        """Sirve el PDF de la factura: desde disco si existe, sino lo regenera en memoria."""
         factura = self.get_object()
-        
-        from .pdf_generator import generar_pdf_factura
-        pdf_buffer = generar_pdf_factura(factura)
-        
-        from django.http import FileResponse
+
+        # Servir desde disco si el archivo existe
+        if factura.pdf_archivo:
+            ruta = Path(settings.MEDIA_ROOT) / factura.pdf_archivo
+            if ruta.exists():
+                return FileResponse(
+                    open(ruta, 'rb'),
+                    content_type='application/pdf',
+                    as_attachment=True,
+                    filename=ruta.name,
+                )
+
+        # Fallback: generar en memoria sin guardar (no re-emite AFIP)
+        pdf_buffer, _ = generar_pdf_factura(factura, guardar_en_disco=False)
         response = FileResponse(pdf_buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="factura_{factura.numero_completo}.pdf"'
-        
         return response
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdministrador])
+    def regenerar_pdf(self, request, pk=None):
+        """Regenera y guarda el PDF de una factura autorizada sin re-emitir AFIP."""
+        factura = self.get_object()
+
+        if factura.estado != Factura.Estado.AUTORIZADA:
+            return Response(
+                {'error': 'Solo se puede regenerar el PDF de facturas autorizadas.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            _, ruta_relativa = generar_pdf_factura(factura, guardar_en_disco=True)
+            factura.pdf_archivo = ruta_relativa
+            factura.save(update_fields=['pdf_archivo'])
+            return Response({'ok': True, 'pdf_archivo': ruta_relativa})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
     def anular(self, request, pk=None):

@@ -1,29 +1,174 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
 import { useCarrito } from '../../context/CarritoContext'
+import { useAuth } from '../../context/AuthContext'
+import { useFavoritos } from '../../context/FavoritosContext'
+
+const NAV_LINKS = [
+  { to: '/', label: 'Inicio', end: true },
+  { to: '/catalogo', label: 'Catálogo' },
+  { to: '/contacto', label: 'Contacto' },
+]
 
 export default function Header() {
   const { totalItems } = useCarrito()
+  const { user } = useAuth()
+  const { count: favCount } = useFavoritos()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  function closeMenu() { setMenuOpen(false) }
 
   return (
-    <header className="header-avila">
-      <div className="container header-inner">
-        <Link to="/" className="logo-link">
-          <span className="logo-avila">
-            <span className="letra-a">A</span><span className="resto">VILA</span>
-          </span>
-          <span className="logo-sub">MOTO REPUESTOS Y ACCESORIOS</span>
-          <span className="logo-direccion">AV PTE CASTILLO 1165</span>
+    <header className="bg-white border-b border-brand-border sticky top-0 z-50 shadow-sm">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+
+        {/* Logo */}
+        <Link to="/" onClick={closeMenu} className="flex items-center flex-shrink-0">
+          <img src="/logo.png" alt="Avila Moto Repuestos" className="h-10 w-auto object-contain" />
         </Link>
-        <nav className="header-nav">
-          <Link to="/">Inicio</Link>
-          <Link to="/productos">Productos</Link>
-          <Link to="/contacto">Contacto</Link>
-          <Link to="/carrito" className="carrito-link">
-            🛒 Carrito
-            {totalItems > 0 && <span className="carrito-badge">{totalItems}</span>}
-          </Link>
+
+        {/* Nav desktop */}
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          {NAV_LINKS.map(l => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              className={({ isActive }) =>
+                isActive ? 'text-brand-blue' : 'text-brand-muted hover:text-brand-text transition-colors'
+              }
+            >
+              {l.label}
+            </NavLink>
+          ))}
         </nav>
+
+        {/* Derecha: carrito + hamburguesa */}
+        <div className="flex items-center gap-1">
+          {/* Favoritos */}
+          <Link
+            to="/favoritos"
+            onClick={closeMenu}
+            className="relative p-2 rounded-lg hover:bg-brand-bg transition-colors"
+            aria-label="Favoritos"
+          >
+            <svg className="h-6 w-6 text-brand-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {favCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {favCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Carrito */}
+          <Link
+            to="/carrito"
+            onClick={closeMenu}
+            className="relative p-2 rounded-lg hover:bg-brand-bg transition-colors"
+            aria-label="Carrito"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-brand-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 bg-brand-blue text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {totalItems}
+              </span>
+            )}
+          </Link>
+
+          {/* Mi cuenta */}
+          <Link
+            to={user ? '/mi-cuenta' : '/login'}
+            onClick={closeMenu}
+            className="p-2 rounded-lg hover:bg-brand-bg transition-colors"
+            aria-label={user ? 'Mi cuenta' : 'Iniciar sesión'}
+          >
+            {user?.avatar_url
+              ? <img src={user.avatar_url} alt={user.nombre} className="w-6 h-6 rounded-full object-cover" />
+              : <svg className="h-6 w-6 text-brand-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            }
+          </Link>
+
+          {/* Hamburguesa (solo mobile) */}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="md:hidden p-2 rounded-lg hover:bg-brand-bg transition-colors"
+            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+          >
+            {menuOpen
+              ? <svg className="h-6 w-6 text-brand-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              : <svg className="h-6 w-6 text-brand-text" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            }
+          </button>
+        </div>
       </div>
+
+      {/* Menú mobile desplegable */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-brand-border bg-white">
+          <nav className="flex flex-col py-2">
+            {NAV_LINKS.map(l => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.end}
+                onClick={closeMenu}
+                className={({ isActive }) =>
+                  `px-4 py-3 text-sm font-medium border-l-4 transition-colors ${
+                    isActive
+                      ? 'border-brand-blue text-brand-blue bg-blue-50'
+                      : 'border-transparent text-brand-text hover:bg-brand-bg'
+                  }`
+                }
+              >
+                {l.label}
+              </NavLink>
+            ))}
+            <NavLink
+              to="/carrito"
+              onClick={closeMenu}
+              className={({ isActive }) =>
+                `px-4 py-3 text-sm font-medium border-l-4 transition-colors flex items-center gap-2 ${
+                  isActive
+                    ? 'border-brand-blue text-brand-blue bg-blue-50'
+                    : 'border-transparent text-brand-text hover:bg-brand-bg'
+                }`
+              }
+            >
+              Carrito
+              {totalItems > 0 && (
+                <span className="bg-brand-blue text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {totalItems}
+                </span>
+              )}
+            </NavLink>
+            <NavLink
+              to={user ? '/mi-cuenta' : '/login'}
+              onClick={closeMenu}
+              className={({ isActive }) =>
+                `px-4 py-3 text-sm font-medium border-l-4 transition-colors ${
+                  isActive
+                    ? 'border-brand-blue text-brand-blue bg-blue-50'
+                    : 'border-transparent text-brand-text hover:bg-brand-bg'
+                }`
+              }
+            >
+              {user ? `Mi cuenta (${user.nombre.split(' ')[0]})` : 'Iniciar sesión'}
+            </NavLink>
+          </nav>
+        </div>
+      )}
     </header>
   )
 }

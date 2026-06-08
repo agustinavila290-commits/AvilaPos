@@ -3,32 +3,33 @@
 @tailwind utilities;
 
 @layer base {
-  /* Tamaños de fuente responsive base - EXTREMADAMENTE COMPACTO */
+  /* Tamaños de fuente responsive base */
   html {
-    font-size: 10px !important; /* EXTREMO para móvil */
+    font-size: 11px !important;
   }
-  
+
   @media (min-width: 640px) {
     html {
-      font-size: 11px !important; /* EXTREMO para tablet */
+      font-size: 12px !important;
     }
   }
-  
+
   @media (min-width: 1024px) {
     html {
-      font-size: 12px !important; /* EXTREMO para desktop */
+      font-size: 13px !important;
     }
   }
-  
+
   @media (min-width: 1440px) {
     html {
-      font-size: 13px !important; /* Pantallas grandes */
+      font-size: 14px !important;
     }
   }
 
   /* ===== LIGHT MODE (Default) ===== */
   body {
-    @apply bg-gray-50 text-gray-800 transition-colors duration-200;
+    background-color: #F3F4F6;
+    @apply text-gray-800 transition-colors duration-200;
   }
 
   /* ===== DARK MODE - POS Professional ===== */
@@ -104,13 +105,21 @@
 }
 
 @layer components {
-  /* Botones Soft UI - Responsive MUY COMPACTO */
+  /* Botones - Paleta brand profesional */
   .btn-primary {
-    @apply bg-gradient-to-br from-blue-500 to-blue-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all duration-200 font-medium;
+    @apply bg-brand-blue text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-md hover:brightness-110 hover:-translate-y-0.5 transition-all duration-150 font-semibold;
   }
-  
+
+  .btn-success {
+    @apply bg-brand-green text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-md hover:brightness-110 hover:-translate-y-0.5 transition-all duration-150 font-semibold;
+  }
+
+  .btn-danger {
+    @apply bg-brand-red text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-md hover:brightness-110 hover:-translate-y-0.5 transition-all duration-150 font-semibold;
+  }
+
   .btn-secondary {
-    @apply bg-white text-gray-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 border border-gray-200 font-medium;
+    @apply bg-white text-brand-text px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm border border-brand-border hover:bg-brand-bg hover:-translate-y-0.5 transition-all duration-150 font-medium;
   }
   .dark .btn-secondary {
     @apply bg-slate-700 text-gray-200 border-slate-600 hover:bg-slate-600;
@@ -133,39 +142,39 @@
     @apply bg-slate-700 border-slate-600 text-gray-100 placeholder-gray-500 focus:ring-blue-400 focus:border-blue-400;
   }
   
-  /* Cards Soft UI con sombra suave - Responsive MUY COMPACTO */
+  /* Cards */
   .card {
-    @apply bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-gray-100 transition-colors duration-200;
+    @apply bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 border border-brand-border transition-colors duration-200;
   }
-  
+
   .dark .card {
     @apply bg-slate-800 border-slate-700 text-gray-100 shadow-slate-900/50;
   }
 
-  /* Metric Card - para KPIs - Responsive MUY COMPACTO */
+  /* Metric Card - para KPIs */
   .metric-card {
-    @apply bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-gray-100 hover:shadow-xl transition-all duration-200;
+    @apply bg-white rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 border border-brand-border hover:shadow-md transition-all duration-200;
   }
-  
+
   .dark .metric-card {
     @apply bg-slate-800 border-slate-700 text-gray-100 shadow-slate-900/50;
   }
 
-  /* Sidebar item activo - Responsive */
+  /* Sidebar items */
   .sidebar-item {
-    @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base text-gray-600 hover:bg-gray-100 transition-all duration-200;
+    @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-lg text-sm text-brand-muted hover:bg-brand-bg hover:text-brand-text transition-all duration-150;
   }
-  
+
   .dark .sidebar-item {
     @apply text-gray-300 hover:bg-slate-700;
   }
 
   .sidebar-item-active {
-    @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30;
+    @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-lg text-sm bg-brand-blue text-white border-l-4 border-brand-blue-dark font-semibold;
   }
-  
+
   .dark .sidebar-item-active {
-    @apply from-blue-600 to-blue-700 shadow-blue-600/40;
+    @apply bg-blue-700 border-blue-900;
   }
 
   /* Inputs: texto oscuro para buena legibilidad */

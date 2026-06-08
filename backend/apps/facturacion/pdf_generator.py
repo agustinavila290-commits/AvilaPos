@@ -22,15 +22,32 @@ from io import BytesIO
 from datetime import datetime
 
 
-def generar_pdf_factura(factura):
+import os
+from pathlib import Path
+
+
+def _nombre_archivo_pdf(factura):
+    """Genera el nombre de archivo para el PDF de una factura."""
+    venta_id = factura.venta_id or 0
+    tipo = factura.tipo_comprobante.replace('/', '_')
+    pv = factura.punto_venta.numero
+    num = factura.numero
+    return f'factura_venta_{venta_id:06d}_{tipo}_{pv:04d}_{num:08d}.pdf'
+
+
+def generar_pdf_factura(factura, guardar_en_disco=True):
     """
-    Genera PDF de factura con formato AFIP
-    
+    Genera PDF de factura con formato AFIP.
+
     Args:
         factura: Objeto Factura
-    
+        guardar_en_disco: Si True, guarda el archivo en MEDIA_ROOT/facturas/ y
+                          retorna (buffer, ruta_relativa). Si False, retorna
+                          (buffer, '') sin guardar nada.
+
     Returns:
-        BytesIO: Buffer con el PDF
+        tuple: (BytesIO buffer, str ruta_relativa)
+               ruta_relativa es vacío si guardar_en_disco=False.
     """
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=10*mm, bottomMargin=10*mm)
@@ -209,12 +226,40 @@ def generar_pdf_factura(factura):
     elements.append(tabla_totales)
     elements.append(Spacer(1, 10*mm))
     
+    # === MÉTODO DE PAGO (tarjeta) ===
+    venta = factura.venta
+    if venta and venta.metodo_pago == 'TARJETA':
+        cupon = (venta.tarjeta_cupon_numero or '').strip()
+        auth = (venta.tarjeta_codigo_autorizacion or '').strip()
+        pago_data = [
+            ['PAGO CON TARJETA'],
+            [f"N° Cupón: {cupon or '—'}    Autorización: {auth or '—'}"]
+        ]
+        tabla_pago = Table(pago_data, colWidths=[190*mm])
+        tabla_pago.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('TOPPADDING', (0, 0), (-1, 0), 6),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('LEFTPADDING', (0, 1), (-1, -1), 8),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ]))
+        elements.append(tabla_pago)
+        elements.append(Spacer(1, 5*mm))
+
     # === OBSERVACIONES ===
     if factura.observaciones:
         elements.append(Paragraph('<b>Observaciones:</b>', styles['Normal']))
         elements.append(Paragraph(factura.observaciones, styles['Normal']))
         elements.append(Spacer(1, 5*mm))
-    
+
     # === PIE DE PÁGINA ===
     if factura.tipo_comprobante != 'PRE':
         pie_texto = f"""
@@ -226,8 +271,21 @@ def generar_pdf_factura(factura):
         """
         elements.append(Spacer(1, 5*mm))
         elements.append(Paragraph(pie_texto, styles['Normal']))
-    
-    # Construir PDF
+
+    # Construir PDF en buffer
     doc.build(elements)
     buffer.seek(0)
-    return buffer
+
+    # Guardar en disco si se solicita
+    if guardar_en_disco:
+        from django.conf import settings as django_settings
+        directorio = Path(django_settings.MEDIA_ROOT) / 'facturas'
+        os.makedirs(directorio, exist_ok=True)
+        nombre = _nombre_archivo_pdf(factura)
+        ruta_absoluta = directorio / nombre
+        ruta_absoluta.write_bytes(buffer.getvalue())
+        buffer.seek(0)
+        ruta_relativa = f'facturas/{nombre}'
+        return buffer, ruta_relativa
+
+    return buffer, ''

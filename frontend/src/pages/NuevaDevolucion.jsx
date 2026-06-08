@@ -2,13 +2,15 @@
  * Página para crear nueva devolución
  */
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getVentas } from '../services/ventasService';
 import { getProductosDevolubles, createDevolucion } from '../services/devolucionesService';
 import { getDepositos } from '../services/inventarioService';
+import TicketDevolucion from '../components/TicketDevolucion';
 
 export default function NuevaDevolucion() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [ventas, setVentas] = useState([]);
   const [depositos, setDepositos] = useState([]);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
@@ -16,6 +18,7 @@ export default function NuevaDevolucion() {
   const [itemsDevolucion, setItemsDevolucion] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [devolucionCreada, setDevolucionCreada] = useState(null);
   const [formData, setFormData] = useState({
     motivo: 'DEFECTO',
     deposito_id: '',
@@ -27,16 +30,35 @@ export default function NuevaDevolucion() {
     cargarDatos();
   }, []);
 
+  useEffect(() => {
+    const ventaIdParam = searchParams.get('venta_id');
+    if (!ventaIdParam || ventas.length === 0) return;
+
+    const ventaExiste = ventas.some((v) => v.id === parseInt(ventaIdParam, 10));
+    if (ventaExiste) {
+      handleVentaChange(ventaIdParam);
+    }
+  }, [searchParams, ventas]);
+
+  const normalizarLista = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+  };
+
   const cargarDatos = async () => {
     try {
       const [ventasData, depositosData] = await Promise.all([
         getVentas({ estado: 'COMPLETADA' }),
         getDepositos()
       ]);
-      setVentas(Array.isArray(ventasData) ? ventasData : []);
-      setDepositos(Array.isArray(depositosData) ? depositosData : []);
-      if (depositosData.length > 0) {
-        setFormData(prev => ({ ...prev, deposito_id: depositosData[0].id }));
+      const ventasNormalizadas = normalizarLista(ventasData);
+      const depositosNormalizados = normalizarLista(depositosData);
+
+      setVentas(ventasNormalizadas);
+      setDepositos(depositosNormalizados);
+      if (depositosNormalizados.length > 0) {
+        setFormData(prev => ({ ...prev, deposito_id: depositosNormalizados[0].id }));
       }
     } catch (err) {
       console.error('Error al cargar datos:', err);
@@ -57,7 +79,7 @@ export default function NuevaDevolucion() {
       setVentaSeleccionada(venta);
       
       const productos = await getProductosDevolubles(ventaId);
-      setProductosDisponibles(productos);
+      setProductosDisponibles(normalizarLista(productos));
       setItemsDevolucion([]);
     } catch (err) {
       console.error('Error:', err);
@@ -128,8 +150,8 @@ export default function NuevaDevolucion() {
         }))
       };
 
-      await createDevolucion(data);
-      navigate('/devoluciones');
+      const devolucion = await createDevolucion(data);
+      setDevolucionCreada(devolucion);
     } catch (err) {
       console.error('Error:', err);
       setError(err.response?.data?.error || 'Error al crear la devolución');
@@ -377,6 +399,13 @@ export default function NuevaDevolucion() {
           </>
         )}
       </form>
+
+      {devolucionCreada && (
+        <TicketDevolucion
+          devolucion={devolucionCreada}
+          onClose={() => navigate('/devoluciones')}
+        />
+      )}
     </div>
   );
 }

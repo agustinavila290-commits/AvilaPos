@@ -29,28 +29,28 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-slate-700">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-slate-100">
           {/* Logo y título */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <img src="/logo-avila.png" alt="Avila Moto Repuesto" className="h-20 w-auto object-contain" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Avila Moto Repuesto</h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Sistema de Gestión</p>
+            <h2 className="text-2xl font-bold text-slate-800">Avila Moto Repuesto</h2>
+            <p className="text-slate-600 mt-2">Sistema de Gestión</p>
           </div>
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-6" data-no-uppercase>
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm font-medium shadow-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium shadow-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="username" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="username" className="block text-sm font-semibold text-slate-700 mb-2">
                 Usuario
               </label>
               <input
@@ -67,7 +67,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="password" className="block text-sm font-semibold text-slate-700 mb-2">
                 Contraseña
               </label>
               <div className="relative">
@@ -84,7 +84,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -104,7 +104,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all duration-200 disabled:bg-gray-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none shadow-lg shadow-blue-500/30"
+              className="w-full bg-gradient-to-br from-blue-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all duration-200 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none shadow-lg shadow-blue-500/30"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
@@ -122,7 +122,7 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-gray-600 dark:text-gray-400 text-sm mt-6">
+        <p className="text-center text-slate-600 text-sm mt-6">
           Avila Moto Repuesto - Sistema de Gestión © 2026
         </p>
       </div>

@@ -33,17 +33,17 @@ export default function MetricCard({ title, value, icon, color = 'blue', trend, 
     <div className={`metric-card ${variant.shadow} animate-scale-in`}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-0.5 sm:mb-1 truncate">{title}</p>
-          <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-gray-100">{value}</h3>
+          <p className="text-xs sm:text-sm font-medium text-slate-600 mb-0.5 sm:mb-1 truncate">{title}</p>
+          <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800">{value}</h3>
           {subtitle && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">{subtitle}</p>
+            <p className="text-xs text-slate-500 mt-0.5 sm:mt-1">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 mt-1 sm:mt-2">
-              <span className={`text-xs font-semibold ${trend.positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              <span className={`text-xs font-semibold ${trend.positive ? 'text-green-600' : 'text-red-600'}`}>
                 {trend.positive ? '↑' : '↓'} {trend.value}
               </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{trend.label}</span>
+              <span className="text-xs text-slate-500">{trend.label}</span>
             </div>
           )}
         </div>

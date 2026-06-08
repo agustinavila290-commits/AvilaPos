@@ -17,8 +17,20 @@ from apps.ventas.models import Venta, DetalleVenta
 from apps.productos.models import VarianteProducto
 from apps.inventario.models import Stock, MovimientoStock
 from apps.clientes.models import Cliente
+from apps.cuenta_corriente.models import TicketCuentaCorriente
+from apps.compras.models import Compra
 from apps.usuarios.permissions import IsAdministrador, IsCajero
 from apps.sistema.excel_export import ExcelExporter
+
+
+def _parse_fecha(valor):
+    """Parsea una fecha YYYY-MM-DD o retorna None."""
+    if not valor:
+        return None
+    try:
+        return datetime.strptime(valor, '%Y-%m-%d').date()
+    except ValueError:
+        return None
 
 
 @api_view(['GET'])
@@ -520,3 +532,296 @@ def export_productos_mas_vendidos_excel(request):
 
     exporter = ExcelExporter()
     return exporter.exportar_reporte_productos_mas_vendidos(productos)
+
+
+# ─── NUEVOS ENDPOINTS FASE 9 ──────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def cajeros_list(request):
+    """Lista los usuarios cajeros/admin para el filtro de reportes."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    cajeros = User.objects.filter(is_active=True).values(
+        'id', 'first_name', 'last_name', 'username'
+    ).order_by('first_name', 'last_name')
+    data = [
+        {
+            'id': u['id'],
+            'nombre': f"{u['first_name']} {u['last_name']}".strip() or u['username'],
+        }
+        for u in cajeros
+    ]
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def ventas_anuladas(request):
+    """
+    Reporte de ventas anuladas en un período.
+    Parámetros: fecha_desde, fecha_hasta, usuario_id
+    """
+    fecha_desde = _parse_fecha(request.query_params.get('fecha_desde'))
+    fecha_hasta = _parse_fecha(request.query_params.get('fecha_hasta'))
+    usuario_id = request.query_params.get('usuario_id')
+
+    if not fecha_desde or not fecha_hasta:
+        return Response({'error': 'Se requieren fecha_desde y fecha_hasta'}, status=400)
+
+    ventas = Venta.objects.filter(
+        fecha__date__gte=fecha_desde,
+        fecha__date__lte=fecha_hasta,
+        estado=Venta.EstadoVenta.ANULADA,
+    ).select_related('cliente', 'usuario', 'usuario_anulacion')
+
+    if usuario_id:
+        ventas = ventas.filter(usuario_id=usuario_id)
+
+    resumen = ventas.aggregate(
+        cantidad=Count('id'),
+        total_anulado=Coalesce(Sum('total'), Decimal('0')),
+    )
+
+    detalle = list(ventas.values(
+        'id', 'numero', 'fecha', 'total', 'metodo_pago',
+        'motivo_anulacion', 'fecha_anulacion',
+        'usuario__first_name', 'usuario__last_name',
+        'usuario_anulacion__first_name', 'usuario_anulacion__last_name',
+        'cliente__nombre',
+    ).order_by('-fecha'))
+
+    return Response({
+        'periodo': {'desde': fecha_desde, 'hasta': fecha_hasta},
+        'resumen': resumen,
+        'ventas': detalle,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def descuentos_resumen(request):
+    """
+    Reporte de descuentos aplicados en ventas en un período.
+    Parámetros: fecha_desde, fecha_hasta, usuario_id
+    """
+    fecha_desde = _parse_fecha(request.query_params.get('fecha_desde'))
+    fecha_hasta = _parse_fecha(request.query_params.get('fecha_hasta'))
+    usuario_id = request.query_params.get('usuario_id')
+
+    if not fecha_desde or not fecha_hasta:
+        return Response({'error': 'Se requieren fecha_desde y fecha_hasta'}, status=400)
+
+    ventas = Venta.objects.filter(
+        fecha__date__gte=fecha_desde,
+        fecha__date__lte=fecha_hasta,
+        estado=Venta.EstadoVenta.COMPLETADA,
+        descuento_monto__gt=0,
+    ).select_related('cliente', 'usuario')
+
+    if usuario_id:
+        ventas = ventas.filter(usuario_id=usuario_id)
+
+    resumen = ventas.aggregate(
+        cantidad_con_descuento=Count('id'),
+        total_descuentos=Coalesce(Sum('descuento_monto'), Decimal('0')),
+        promedio_descuento_pct=Avg('descuento_porcentaje'),
+    )
+
+    # Desglose por cajero
+    por_cajero = list(ventas.values(
+        'usuario__first_name', 'usuario__last_name'
+    ).annotate(
+        cantidad=Count('id'),
+        total_descuento=Sum('descuento_monto'),
+    ).order_by('-total_descuento'))
+
+    # Top 10 ventas con mayor descuento
+    top_ventas = list(ventas.values(
+        'id', 'numero', 'fecha', 'total', 'descuento_monto',
+        'descuento_porcentaje', 'metodo_pago',
+        'usuario__first_name', 'usuario__last_name',
+        'cliente__nombre',
+    ).order_by('-descuento_monto')[:50])
+
+    return Response({
+        'periodo': {'desde': fecha_desde, 'hasta': fecha_hasta},
+        'resumen': resumen,
+        'por_cajero': por_cajero,
+        'ventas_con_descuento': top_ventas,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def clientes_deuda(request):
+    """
+    Reporte de clientes con deuda pendiente en cuenta corriente.
+    Parámetros: solo_vencidos (true/false), ordenar (deuda_desc|deuda_asc|nombre)
+    """
+    solo_vencidos = request.query_params.get('solo_vencidos', 'false').lower() == 'true'
+    ordenar = request.query_params.get('ordenar', 'deuda_desc')
+
+    tickets = TicketCuentaCorriente.objects.filter(
+        estado=TicketCuentaCorriente.Estado.A_SALDAR
+    ).select_related('cliente').prefetch_related('pagos')
+
+    # Agregar por cliente
+    clientes_map = {}
+    for ticket in tickets:
+        saldo = ticket.saldo_pendiente
+        vencido = ticket.esta_vencido
+        if solo_vencidos and not vencido:
+            continue
+        cid = ticket.cliente_id
+        if cid not in clientes_map:
+            clientes_map[cid] = {
+                'cliente_id': cid,
+                'nombre': ticket.cliente.nombre,
+                'telefono': ticket.cliente.telefono or '',
+                'whatsapp': getattr(ticket.cliente, 'whatsapp', '') or '',
+                'limite_credito': float(ticket.cliente.limite_credito),
+                'deuda_total': Decimal('0'),
+                'tickets_pendientes': 0,
+                'tickets_vencidos': 0,
+            }
+        clientes_map[cid]['deuda_total'] += saldo
+        clientes_map[cid]['tickets_pendientes'] += 1
+        if vencido:
+            clientes_map[cid]['tickets_vencidos'] += 1
+
+    resultado = list(clientes_map.values())
+    for r in resultado:
+        r['deuda_total'] = float(r['deuda_total'])
+
+    # Ordenar
+    if ordenar == 'deuda_asc':
+        resultado.sort(key=lambda x: x['deuda_total'])
+    elif ordenar == 'nombre':
+        resultado.sort(key=lambda x: x['nombre'])
+    else:
+        resultado.sort(key=lambda x: x['deuda_total'], reverse=True)
+
+    total_deuda = sum(r['deuda_total'] for r in resultado)
+    return Response({
+        'total_clientes_con_deuda': len(resultado),
+        'total_deuda': total_deuda,
+        'clientes': resultado,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def compras_por_proveedor(request):
+    """
+    Reporte de compras agrupadas por proveedor en un período.
+    Parámetros: fecha_desde, fecha_hasta
+    """
+    fecha_desde = _parse_fecha(request.query_params.get('fecha_desde'))
+    fecha_hasta = _parse_fecha(request.query_params.get('fecha_hasta'))
+
+    compras = Compra.objects.filter(estado=Compra.EstadoCompra.COMPLETADA)
+    if fecha_desde:
+        compras = compras.filter(fecha__date__gte=fecha_desde)
+    if fecha_hasta:
+        compras = compras.filter(fecha__date__lte=fecha_hasta)
+
+    resumen = compras.aggregate(
+        cantidad_total=Count('id'),
+        monto_total=Coalesce(Sum('total'), Decimal('0')),
+    )
+
+    por_proveedor = list(compras.values(
+        'proveedor__id', 'proveedor__nombre'
+    ).annotate(
+        cantidad_compras=Count('id'),
+        monto_total=Sum('total'),
+    ).order_by('-monto_total'))
+
+    # Detalle por compra
+    detalle = list(compras.values(
+        'id', 'numero', 'fecha', 'total',
+        'proveedor__nombre', 'numero_factura',
+        'usuario__first_name', 'usuario__last_name',
+    ).order_by('-fecha')[:200])
+
+    return Response({
+        'periodo': {
+            'desde': fecha_desde.isoformat() if fecha_desde else None,
+            'hasta': fecha_hasta.isoformat() if fecha_hasta else None,
+        },
+        'resumen': resumen,
+        'por_proveedor': por_proveedor,
+        'detalle': detalle,
+    })
+
+
+# ─── EXPORTS EXCEL NUEVOS ─────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def export_ventas_anuladas_excel(request):
+    fecha_desde = _parse_fecha(request.query_params.get('fecha_desde'))
+    fecha_hasta = _parse_fecha(request.query_params.get('fecha_hasta'))
+    if not fecha_desde or not fecha_hasta:
+        return Response({'error': 'Se requieren fecha_desde y fecha_hasta'}, status=400)
+
+    ventas = Venta.objects.filter(
+        fecha__date__gte=fecha_desde,
+        fecha__date__lte=fecha_hasta,
+        estado=Venta.EstadoVenta.ANULADA,
+    ).select_related('cliente', 'usuario', 'usuario_anulacion').order_by('-fecha')
+
+    exporter = ExcelExporter()
+    return exporter.exportar_ventas_anuladas(ventas, fecha_desde, fecha_hasta)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def export_clientes_deuda_excel(request):
+    solo_vencidos = request.query_params.get('solo_vencidos', 'false').lower() == 'true'
+    tickets = TicketCuentaCorriente.objects.filter(
+        estado=TicketCuentaCorriente.Estado.A_SALDAR
+    ).select_related('cliente').prefetch_related('pagos')
+
+    clientes_map = {}
+    for ticket in tickets:
+        saldo = ticket.saldo_pendiente
+        vencido = ticket.esta_vencido
+        if solo_vencidos and not vencido:
+            continue
+        cid = ticket.cliente_id
+        if cid not in clientes_map:
+            clientes_map[cid] = {
+                'nombre': ticket.cliente.nombre,
+                'telefono': ticket.cliente.telefono or '',
+                'deuda_total': Decimal('0'),
+                'tickets_pendientes': 0,
+                'tickets_vencidos': 0,
+            }
+        clientes_map[cid]['deuda_total'] += saldo
+        clientes_map[cid]['tickets_pendientes'] += 1
+        if vencido:
+            clientes_map[cid]['tickets_vencidos'] += 1
+
+    resultado = sorted(clientes_map.values(), key=lambda x: x['deuda_total'], reverse=True)
+    exporter = ExcelExporter()
+    return exporter.exportar_clientes_deuda(resultado)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdministrador])
+def export_compras_proveedor_excel(request):
+    fecha_desde = _parse_fecha(request.query_params.get('fecha_desde'))
+    fecha_hasta = _parse_fecha(request.query_params.get('fecha_hasta'))
+
+    compras = Compra.objects.filter(
+        estado=Compra.EstadoCompra.COMPLETADA
+    ).select_related('proveedor', 'usuario')
+    if fecha_desde:
+        compras = compras.filter(fecha__date__gte=fecha_desde)
+    if fecha_hasta:
+        compras = compras.filter(fecha__date__lte=fecha_hasta)
+
+    exporter = ExcelExporter()
+    return exporter.exportar_compras_proveedor(compras, fecha_desde, fecha_hasta)

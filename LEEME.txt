@@ -1,0 +1,138 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                     AVILAPOS - GUÍA DE USO                      ║
+║              Avila Moto Repuestos y Accesorios                   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PRIMERA VEZ EN UNA PC NUEVA  (solo se hace una vez)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Extraé el contenido del archivo .rar en una carpeta, por ejemplo:
+         C:\AvilaPOS\
+
+  2. Hacé doble clic en:
+         scripts\instalar_todo.bat
+
+     → Esto instala automáticamente Python, Node.js y todas las
+       dependencias necesarias. Puede tardar unos minutos.
+       Seguí las instrucciones que aparezcan en pantalla.
+
+  3. Hacé doble clic en:
+         scripts\crear_accesos_directos.bat
+
+     → Crea dos íconos en el Escritorio:
+         • "Abrir AvilaPOS"
+         • "Cerrar AvilaPOS"
+
+  ¡Listo! Solo necesitás hacer esto una sola vez.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  USO DIARIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PARA ABRIR EL SISTEMA:
+  ──────────────────────
+  Hacé doble clic en el ícono del Escritorio:
+      "Abrir AvilaPOS"
+
+  El sistema va a:
+    1. Iniciar el servidor en segundo plano (sin ventanas de consola)
+    2. Abrir el navegador automáticamente con el POS
+    3. Mostrar un ícono de Avila en la barra de tareas (abajo a la derecha)
+
+  Esperá unos segundos mientras carga por primera vez.
+  El navegador se abre solo cuando el sistema está listo.
+
+
+  PARA CERRAR EL SISTEMA:
+  ───────────────────────
+  OPCIÓN 1 (recomendada):
+    → Clic derecho sobre el ícono de Avila en la barra de tareas
+    → Elegí "Cerrar AvilaPOS"
+
+  OPCIÓN 2:
+    → Hacé doble clic en el ícono del Escritorio: "Cerrar AvilaPOS"
+
+  ⚠ No cierres solo el navegador — el sistema seguirá corriendo
+    en segundo plano hasta que uses una de las opciones de arriba.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ACCESO AL SISTEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  El sistema se abre en el navegador en la siguiente dirección:
+      http://localhost:5173
+
+  Si el navegador no se abre solo, podés escribir esa dirección
+  manualmente en cualquier navegador (Chrome, Edge, Firefox).
+
+  Credenciales por defecto:
+      Usuario:    admin
+      Contraseña: admin123
+
+  ⚠ Cambiá la contraseña después del primer acceso.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SI ALGO NO FUNCIONA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Problema: El sistema no abre o da error al iniciar
+  ─────────────────────────────────────────────────
+  1. Cerrá el sistema (opción 1 o 2 de arriba)
+  2. Volvé a hacer doble clic en "Abrir AvilaPOS"
+  3. Si el error persiste, revisá el archivo de log:
+         logs\avilapos.log
+     (abrilo con el Bloc de notas para ver qué pasó)
+
+  Problema: El navegador abre pero muestra error de conexión
+  ──────────────────────────────────────────────────────────
+  → El servidor todavía está cargando. Esperá 10-15 segundos
+    y recargá la página (F5).
+
+  Problema: "El puerto ya está en uso"
+  ─────────────────────────────────────
+  → El sistema ya estaba corriendo. Abrí el navegador en:
+        http://localhost:5173
+    o usá "Abrir AvilaPOS" nuevamente (solo abrirá el navegador).
+
+  Problema: Se cerró sin querer y los datos no se guardaron
+  ──────────────────────────────────────────────────────────
+  → Todos los datos se guardan automáticamente en tiempo real.
+    Al volver a abrir el sistema van a estar todos los registros.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ARCHIVOS IMPORTANTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  AvilaPOS.exe                → Lanzador principal del sistema
+  backend\db.sqlite3          → Base de datos con todos los datos
+                                (¡hacé backup de este archivo!)
+  logs\avilapos.log           → Registro de eventos del sistema
+  scripts\instalar_todo.bat   → Instalación inicial (solo 1 vez)
+  scripts\crear_accesos_...   → Crea íconos en el Escritorio
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  BACKUP DE DATOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Todos los datos del negocio están en:
+      backend\db.sqlite3
+
+  Se recomienda copiar ese archivo a un pendrive o carpeta en la
+  nube periódicamente (ej: al final de cada jornada).
+
+  Para restaurar: reemplazá el archivo db.sqlite3 con el backup.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CONTACTO / SOPORTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Email: agustinavila290@gmail.com
+
+══════════════════════════════════════════════════════════════════

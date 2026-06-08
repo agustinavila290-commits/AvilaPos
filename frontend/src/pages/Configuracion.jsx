@@ -2,12 +2,13 @@
  * Página de configuración del sistema (solo admin) - Soft UI
  */
 import { useState, useEffect } from 'react';
-import { 
-  getConfiguraciones, 
+import {
+  getConfiguraciones,
   actualizarValorConfig,
-  getCategorias 
+  getCategorias
 } from '../services/configuracionService';
 import SoftCard from '../components/SoftCard';
+import { getPrintConfig, savePrintConfig } from '../utils/printTicket';
 
 export default function Configuracion() {
   const [configuraciones, setConfiguraciones] = useState([]);
@@ -17,6 +18,14 @@ export default function Configuracion() {
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [cfgImpresora, setCfgImpresora] = useState(getPrintConfig);
+  const [mensajeImpresora, setMensajeImpresora] = useState('');
+
+  const guardarCfgImpresora = () => {
+    savePrintConfig(cfgImpresora);
+    setMensajeImpresora('Configuración de impresión guardada');
+    setTimeout(() => setMensajeImpresora(''), 2500);
+  };
   
   // Estados temporales para edición
   const [valoresTemp, setValoresTemp] = useState({});
@@ -192,16 +201,16 @@ export default function Configuracion() {
       </div>
 
       {/* Resumen configuración POS */}
-      <SoftCard title="Configuración del POS (Punto de Venta)" icon="🛒" className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600">
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+      <SoftCard title="Configuración del POS (Punto de Venta)" icon="🛒" className="bg-slate-50 border border-slate-200">
+        <p className="text-sm text-slate-600 mb-3">
           En la categoría <strong>POS / Ventas</strong> puedes modificar:
         </p>
-        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+        <ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
           <li><strong>Cliente obligatorio</strong>: si debe elegirse un cliente en cada venta.</li>
           <li><strong>Descuento máximo cajero / admin</strong>: límites de descuento por rol (el backend ya los aplica).</li>
           <li><strong>Margen bajo</strong>: umbral y alerta cuando el margen de la venta es bajo.</li>
         </ul>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">
+        <p className="text-sm text-slate-600 mt-3">
           En <strong>Datos de la empresa</strong>: nombre, teléfono, dirección y CUIT (útil para tickets e impresiones).
         </p>
       </SoftCard>
@@ -264,7 +273,7 @@ export default function Configuracion() {
                     <div key={config.id} className="border-b border-gray-200 pb-6 last:border-0">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          <label className="block text-sm font-semibold text-slate-800">
                             {getClaveLabel(config.clave)}
                           </label>
                           <p className="text-sm text-gray-600 mt-1">
@@ -306,6 +315,60 @@ export default function Configuracion() {
           </div>
         </div>
       )}
+
+      {/* Configuración de impresión - almacenada localmente por dispositivo */}
+      <SoftCard title="Configuración de Impresión" icon="🖨️">
+        <p className="text-xs text-slate-500 mb-4">
+          Configuración por dispositivo (guardada en este navegador, no en el servidor).
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Ancho del ticket</label>
+            <select
+              value={cfgImpresora.anchoTicket}
+              onChange={e => setCfgImpresora(p => ({ ...p, anchoTicket: e.target.value }))}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            >
+              <option value="72mm">72 mm (impresora 80mm estándar)</option>
+              <option value="80mm">80 mm (ancho completo)</option>
+              <option value="58mm">58 mm (impresora pequeña)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Nombre de impresora (referencia)</label>
+            <input
+              type="text"
+              value={cfgImpresora.nombreImpresora}
+              onChange={e => setCfgImpresora(p => ({ ...p, nombreImpresora: e.target.value }))}
+              placeholder="Ej: Epson TM-T20"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="autoImprimir"
+              checked={cfgImpresora.autoImprimir}
+              onChange={e => setCfgImpresora(p => ({ ...p, autoImprimir: e.target.checked }))}
+              className="rounded"
+            />
+            <label htmlFor="autoImprimir" className="text-sm text-slate-700">
+              Abrir ticket automáticamente al cobrar
+            </label>
+          </div>
+        </div>
+        {mensajeImpresora && (
+          <p className="text-xs text-green-700 mt-3 font-medium">{mensajeImpresora}</p>
+        )}
+        <div className="mt-4">
+          <button
+            onClick={guardarCfgImpresora}
+            className="btn-primary px-4 py-2 text-sm"
+          >
+            Guardar configuración de impresión
+          </button>
+        </div>
+      </SoftCard>
 
       {/* Información adicional - Soft UI */}
       <SoftCard

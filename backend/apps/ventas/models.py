@@ -97,21 +97,60 @@ class Venta(models.Model):
         choices=MetodoPago.choices,
         verbose_name='Método de Pago'
     )
-    tarjeta_cupon_numero = models.CharField(
-        max_length=50,
+    tarjeta_cupon_numero = models.TextField(
         blank=True,
         default='',
         verbose_name='Número de cupón tarjeta',
-        help_text='Número de cupón/comprobante del posnet para pagos con tarjeta'
+        help_text='Número(s) de cupón/comprobante del posnet para pagos con tarjeta'
     )
-    tarjeta_codigo_autorizacion = models.CharField(
-        max_length=50,
+    tarjeta_codigo_autorizacion = models.TextField(
         blank=True,
         default='',
         verbose_name='Código de autorización tarjeta',
-        help_text='Código de autorización informado por el posnet para pagos con tarjeta'
+        help_text='Código(s) de autorización informados por el posnet para pagos con tarjeta'
     )
-    
+
+    # Datos de transferencia bancaria
+    class EstadoTransferencia(models.TextChoices):
+        PENDIENTE   = 'PENDIENTE',  'Pendiente de confirmación'
+        CONFIRMADA  = 'CONFIRMADA', 'Confirmada'
+        RECHAZADA   = 'RECHAZADA',  'Rechazada'
+
+    transferencia_banco = models.CharField(
+        max_length=100, blank=True, default='',
+        verbose_name='Banco / Billetera'
+    )
+    transferencia_cuenta_destino = models.CharField(
+        max_length=200, blank=True, default='',
+        verbose_name='Cuenta Destino / CBU / CVU'
+    )
+    transferencia_numero_operacion = models.CharField(
+        max_length=100, blank=True, default='',
+        verbose_name='N° de Operación'
+    )
+    transferencia_observacion = models.TextField(
+        blank=True, default='',
+        verbose_name='Observación'
+    )
+    transferencia_estado = models.CharField(
+        max_length=12,
+        choices=EstadoTransferencia.choices,
+        blank=True, default='',
+        verbose_name='Estado Transferencia',
+        help_text='Solo aplica cuando metodo_pago=TRANSFERENCIA'
+    )
+    transferencia_confirmada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='transferencias_confirmadas',
+        verbose_name='Confirmada por'
+    )
+    transferencia_fecha_confirmacion = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name='Fecha de Confirmación'
+    )
+
     # Estado
     estado = models.CharField(
         max_length=20,
@@ -269,3 +308,101 @@ class DetalleVenta(models.Model):
         if self.costo_unitario == 0:
             return 100
         return (self.margen_unitario / self.costo_unitario) * 100
+
+
+# ─── Presupuestos ──────────────────────────────────────────────────────────────
+
+class Presupuesto(models.Model):
+    """Presupuesto / cotización. No descuenta stock hasta convertirse en Venta."""
+
+    class Estado(models.TextChoices):
+        BORRADOR   = 'BORRADOR',   'Borrador'
+        ENVIADO    = 'ENVIADO',    'Enviado'
+        ACEPTADO   = 'ACEPTADO',   'Aceptado'
+        RECHAZADO  = 'RECHAZADO',  'Rechazado'
+        VENCIDO    = 'VENCIDO',    'Vencido'
+        CONVERTIDO = 'CONVERTIDO', 'Convertido a venta'
+
+    numero = models.IntegerField(unique=True, verbose_name='Número')
+    cliente = models.ForeignKey(
+        Cliente, on_delete=models.PROTECT,
+        null=True, blank=True, related_name='presupuestos',
+        verbose_name='Cliente'
+    )
+    cliente_nombre_manual = models.CharField(
+        max_length=200, blank=True, default='',
+        verbose_name='Nombre cliente (manual)',
+        help_text='Usado cuando no hay cliente registrado'
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='presupuestos', verbose_name='Usuario'
+    )
+    deposito = models.ForeignKey(
+        Deposito, on_delete=models.PROTECT,
+        null=True, blank=True, related_name='presupuestos',
+        verbose_name='Depósito'
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_vencimiento = models.DateField(null=True, blank=True, verbose_name='Válido hasta')
+    observaciones = models.TextField(blank=True, default='', verbose_name='Observaciones')
+    estado = models.CharField(
+        max_length=12, choices=Estado.choices,
+        default=Estado.BORRADOR, verbose_name='Estado'
+    )
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    descuento_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    descuento_monto = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    venta = models.ForeignKey(
+        Venta, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='presupuesto_origen',
+        verbose_name='Venta generada'
+    )
+
+    class Meta:
+        verbose_name = 'Presupuesto'
+        verbose_name_plural = 'Presupuestos'
+        ordering = ['-fecha_creacion']
+
+    def __str__(self):
+        cliente_str = self.cliente.nombre_completo if self.cliente else (self.cliente_nombre_manual or 'Sin cliente')
+        return f"Presupuesto #{self.numero} - {cliente_str}"
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.numero:
+            last = Presupuesto.objects.order_by('-numero').first()
+            self.numero = (last.numero + 1) if last else 1
+        super().save(*args, **kwargs)
+
+    @property
+    def nombre_cliente(self):
+        if self.cliente:
+            return self.cliente.nombre_completo
+        return self.cliente_nombre_manual or 'Sin cliente'
+
+    @property
+    def esta_vencido(self):
+        from django.utils import timezone
+        if self.fecha_vencimiento and self.estado not in ('CONVERTIDO', 'RECHAZADO'):
+            return self.fecha_vencimiento < timezone.now().date()
+        return False
+
+
+class ItemPresupuesto(models.Model):
+    presupuesto = models.ForeignKey(
+        Presupuesto, on_delete=models.CASCADE, related_name='items'
+    )
+    variante = models.ForeignKey(
+        VarianteProducto, on_delete=models.PROTECT, related_name='presupuestos'
+    )
+    cantidad = models.IntegerField(validators=[MinValueValidator(1)])
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    descuento_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.variante.codigo} x{self.cantidad}"

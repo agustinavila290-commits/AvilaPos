@@ -37,7 +37,8 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
             'producto_nombre', 'marca_nombre', 'categoria_nombre',
             'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
             'margen_porcentaje', 'margen_monto', 'nombre_completo',
-            'stock_actual', 'activo', 'fecha_creacion', 'fecha_actualizacion'
+            'stock_actual', 'stock_minimo', 'punto_reorden',
+            'activo', 'fecha_creacion', 'fecha_actualizacion'
         ]
         read_only_fields = ['id', 'fecha_creacion', 'fecha_actualizacion']
     
@@ -65,7 +66,8 @@ class VarianteProductoCreateSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'nombre_variante', 'codigo',
             'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
-            'stock_inicial', 'activo'
+            'stock_inicial', 'stock_minimo', 'punto_reorden',
+            'proveedor_habitual', 'activo'
         ]
     
     def validate_codigo(self, value):
@@ -188,13 +190,22 @@ class VarianteListSerializer(serializers.ModelSerializer):
     margen_porcentaje = serializers.ReadOnlyField()
     stock_actual = serializers.SerializerMethodField()
     
+    proveedor_habitual_nombre = serializers.SerializerMethodField()
+
+    def get_proveedor_habitual_nombre(self, obj):
+        try:
+            return obj.proveedor_habitual.nombre if obj.proveedor_habitual else None
+        except Exception:
+            return None
+
     class Meta:
         model = VarianteProducto
         fields = [
             'id', 'codigo', 'nombre_variante', 'nombre_completo',
             'producto_nombre', 'marca_nombre', 'categoria_nombre',
             'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
-            'margen_porcentaje', 'stock_actual', 'activo'
+            'margen_porcentaje', 'stock_actual', 'stock_minimo', 'punto_reorden',
+            'proveedor_habitual', 'proveedor_habitual_nombre', 'activo'
         ]
     
     def get_stock_actual(self, obj):

@@ -57,6 +57,35 @@ export const buscarVentas = async (searchTerm, params = {}) => {
   return response.data;
 };
 
+// ============ TARJETA ============
+
+export const actualizarDatosTarjeta = async (id, cupon, auth) => {
+  const response = await api.patch(`${BASE_URL}/ventas/${id}/actualizar_datos_tarjeta/`, {
+    tarjeta_cupon_numero: cupon,
+    tarjeta_codigo_autorizacion: auth,
+  });
+  return response.data;
+};
+
+// ============ TRANSFERENCIAS ============
+
+export const getTransferenciasPendientes = async () => {
+  const response = await api.get(`${BASE_URL}/ventas/transferencias_pendientes/`);
+  return response.data;
+};
+
+export const confirmarTransferencia = async (id, datos = {}) => {
+  const response = await api.patch(`${BASE_URL}/ventas/${id}/confirmar_transferencia/`, datos);
+  return response.data;
+};
+
+export const rechazarTransferencia = async (id, observacion = '') => {
+  const response = await api.patch(`${BASE_URL}/ventas/${id}/rechazar_transferencia/`, {
+    transferencia_observacion: observacion,
+  });
+  return response.data;
+};
+
 export default {
   getVentas,
   getVenta,
@@ -65,5 +94,9 @@ export default {
   getResumenDiario,
   getVentasPorFecha,
   getVentasPorCliente,
-  buscarVentas
+  buscarVentas,
+  actualizarDatosTarjeta,
+  getTransferenciasPendientes,
+  confirmarTransferencia,
+  rechazarTransferencia,
 };

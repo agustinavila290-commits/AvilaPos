@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register(r'depositos', views.DepositoViewSet, basename='deposito')
 router.register(r'stocks', views.StockViewSet, basename='stock')
 router.register(r'movimientos', views.MovimientoStockViewSet, basename='movimiento')
+router.register(r'conteos', views.ConteoViewSet, basename='conteo')
 
 urlpatterns = [
     path('', include(router.urls)),

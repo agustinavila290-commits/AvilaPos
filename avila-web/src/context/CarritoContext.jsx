@@ -1,97 +1,78 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useReducer, useState, useEffect, useCallback } from 'react'
 
-const CarritoContext = createContext(null);
+const CarritoContext = createContext(null)
+const STORAGE_KEY = 'avila_carrito'
 
-const STORAGE_KEY = 'avila_carrito';
-
-function loadCarrito() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data);
+function carritoReducer(state, action) {
+  switch (action.type) {
+    case 'AGREGAR': {
+      const existente = state.items.find(i => i.id === action.producto.id)
+      if (existente) {
+        return {
+          ...state,
+          items: state.items.map(i =>
+            i.id === action.producto.id
+              ? { ...i, cantidad: i.cantidad + 1 }
+              : i
+          ),
+        }
+      }
+      return { ...state, items: [...state.items, { ...action.producto, cantidad: 1 }] }
     }
-  } catch (e) {
-    console.warn('Error loading carrito', e);
+    case 'QUITAR':
+      return { ...state, items: state.items.filter(i => i.id !== action.id) }
+    case 'CAMBIAR_CANTIDAD': {
+      if (action.cantidad <= 0) {
+        return { ...state, items: state.items.filter(i => i.id !== action.id) }
+      }
+      return {
+        ...state,
+        items: state.items.map(i =>
+          i.id === action.id ? { ...i, cantidad: action.cantidad } : i
+        ),
+      }
+    }
+    case 'VACIAR':
+      return { items: [] }
+    default:
+      return state
   }
-  return [];
 }
 
-function saveCarrito(items) {
+function loadFromStorage() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch (e) {
-    console.warn('Error saving carrito', e);
-  }
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) return JSON.parse(saved)
+  } catch {}
+  return { items: [] }
 }
 
 export function CarritoProvider({ children }) {
-  const [items, setItems] = useState(loadCarrito);
+  const [state, dispatch] = useReducer(carritoReducer, null, loadFromStorage)
+  const [toastMsg, setToastMsg] = useState(null)
 
   useEffect(() => {
-    saveCarrito(items);
-  }, [items]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }, [state])
 
-  const agregar = (producto, cantidad = 1) => {
-    const existente = items.find((i) => i.variante_id === producto.id);
-    if (existente) {
-      setItems(items.map((i) =>
-        i.variante_id === producto.id
-          ? { ...i, cantidad: i.cantidad + cantidad }
-          : i
-      ));
-    } else {
-      setItems([
-        ...items,
-        {
-          variante_id: producto.id,
-          codigo: producto.codigo,
-          nombre_completo: producto.nombre_completo,
-          precio_web: parseFloat(producto.precio_web) || 0,
-          cantidad,
-          imagen_url: producto.imagen_url,
-        },
-      ]);
-    }
-  };
+  const agregarConToast = useCallback((producto) => {
+    dispatch({ type: 'AGREGAR', producto })
+    setToastMsg(producto.nombre || 'Producto')
+    setTimeout(() => setToastMsg(null), 2500)
+  }, [])
 
-  const actualizarCantidad = (varianteId, cantidad) => {
-    if (cantidad < 1) {
-      eliminar(varianteId);
-      return;
-    }
-    setItems(items.map((i) =>
-      i.variante_id === varianteId ? { ...i, cantidad } : i
-    ));
-  };
-
-  const eliminar = (varianteId) => {
-    setItems(items.filter((i) => i.variante_id !== varianteId));
-  };
-
-  const vaciar = () => setItems([]);
-
-  const totalItems = items.reduce((s, i) => s + i.cantidad, 0);
-  const totalMonto = items.reduce((s, i) => s + i.precio_web * i.cantidad, 0);
-
-  const value = {
-    items,
-    totalItems,
-    totalMonto,
-    agregar,
-    actualizarCantidad,
-    eliminar,
-    vaciar,
-  };
+  const totalItems = state.items.reduce((acc, i) => acc + i.cantidad, 0)
+  const totalPrecio = state.items.reduce((acc, i) => acc + i.precio_web * i.cantidad, 0)
 
   return (
-    <CarritoContext.Provider value={value}>
+    <CarritoContext.Provider value={{ items: state.items, totalItems, totalPrecio, dispatch, agregarConToast, toastMsg }}>
       {children}
     </CarritoContext.Provider>
-  );
+  )
 }
 
 export function useCarrito() {
-  const ctx = useContext(CarritoContext);
-  if (!ctx) throw new Error('useCarrito debe usarse dentro de CarritoProvider');
-  return ctx;
+  const ctx = useContext(CarritoContext)
+  if (!ctx) throw new Error('useCarrito debe usarse dentro de CarritoProvider')
+  return ctx
 }

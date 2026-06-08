@@ -92,6 +92,54 @@ export const descargarProductosMasVendidosExcel = async (params = {}) => {
   window.URL.revokeObjectURL(url);
 };
 
+// ============ NUEVOS FASE 9 ============
+
+export const getCajeros = async () => {
+  const response = await api.get(`${BASE_URL}/cajeros/`);
+  return Array.isArray(response.data) ? response.data : [];
+};
+
+export const getVentasAnuladas = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/ventas/anuladas/`, { params });
+  return response.data;
+};
+
+export const getDescuentosResumen = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/ventas/descuentos/`, { params });
+  return response.data;
+};
+
+export const getClientesDeuda = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/clientes/deuda/`, { params });
+  return response.data;
+};
+
+export const getComprasPorProveedor = async (params = {}) => {
+  const response = await api.get(`${BASE_URL}/compras/por-proveedor/`, { params });
+  return response.data;
+};
+
+const _descargarBlob = async (url, params, filename) => {
+  const response = await api.get(url, { params, responseType: 'blob' });
+  const blob = new Blob([response.data], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const a = document.createElement('a');
+  a.href = window.URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  window.URL.revokeObjectURL(a.href);
+};
+
+export const descargarVentasAnuladasExcel = (params) =>
+  _descargarBlob(`${BASE_URL}/ventas/anuladas/export-excel/`, params, 'ventas_anuladas.xlsx');
+
+export const descargarClientesDeudaExcel = (params) =>
+  _descargarBlob(`${BASE_URL}/clientes/deuda/export-excel/`, params, 'clientes_deuda.xlsx');
+
+export const descargarComprasProveedorExcel = (params) =>
+  _descargarBlob(`${BASE_URL}/compras/por-proveedor/export-excel/`, params, 'compras_proveedor.xlsx');
+
 export default {
   getResumenDashboard,
   getVentasPorPeriodo,
@@ -102,4 +150,13 @@ export default {
   exportarVentasExcel,
   descargarVentasPeriodoExcel,
   descargarProductosMasVendidosExcel,
+  // Fase 9
+  getCajeros,
+  getVentasAnuladas,
+  getDescuentosResumen,
+  getClientesDeuda,
+  getComprasPorProveedor,
+  descargarVentasAnuladasExcel,
+  descargarClientesDeudaExcel,
+  descargarComprasProveedorExcel,
 };

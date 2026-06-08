@@ -253,6 +253,96 @@ class ExcelExporter:
         self._auto_adjust_columns()
         return self._generate_response('productos_mas_vendidos')
 
+    def exportar_ventas_anuladas(self, ventas, fecha_desde=None, fecha_hasta=None):
+        """Exporta ventas anuladas en un período."""
+        self.ws.title = 'Ventas Anuladas'
+        headers = [
+            'Número', 'Fecha', 'Cliente', 'Total', 'Método de Pago',
+            'Motivo Anulación', 'Fecha Anulación',
+            'Cajero Original', 'Anuló'
+        ]
+        self.ws.append(headers)
+        for col_num, header in enumerate(headers, 1):
+            cell = self.ws.cell(row=1, column=col_num)
+            cell.font = self.header_font
+            cell.fill = self.header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = self.border
+        for v in ventas:
+            cajero = ''
+            if v.usuario:
+                cajero = f"{v.usuario.first_name} {v.usuario.last_name}".strip() or v.usuario.username
+            anulo = ''
+            if v.usuario_anulacion:
+                anulo = f"{v.usuario_anulacion.first_name} {v.usuario_anulacion.last_name}".strip()
+            self.ws.append([
+                v.numero,
+                v.fecha.strftime('%d/%m/%Y %H:%M'),
+                v.cliente.nombre if v.cliente else 'Consumidor Final',
+                float(v.total),
+                v.metodo_pago,
+                v.motivo_anulacion or '',
+                v.fecha_anulacion.strftime('%d/%m/%Y %H:%M') if v.fecha_anulacion else '',
+                cajero,
+                anulo,
+            ])
+        self._auto_adjust_columns()
+        base = f'ventas_anuladas_{fecha_desde}_{fecha_hasta}' if fecha_desde else 'ventas_anuladas'
+        return self._generate_response(base)
+
+    def exportar_clientes_deuda(self, clientes):
+        """Exporta clientes con deuda pendiente."""
+        self.ws.title = 'Clientes con Deuda'
+        headers = [
+            'Nombre', 'Teléfono', 'Deuda Total', 'Tickets Pendientes', 'Tickets Vencidos'
+        ]
+        self.ws.append(headers)
+        for col_num, header in enumerate(headers, 1):
+            cell = self.ws.cell(row=1, column=col_num)
+            cell.font = self.header_font
+            cell.fill = self.header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = self.border
+        for c in clientes:
+            self.ws.append([
+                c.get('nombre', ''),
+                c.get('telefono', ''),
+                float(c.get('deuda_total', 0)),
+                c.get('tickets_pendientes', 0),
+                c.get('tickets_vencidos', 0),
+            ])
+        self._auto_adjust_columns()
+        return self._generate_response('clientes_deuda')
+
+    def exportar_compras_proveedor(self, compras, fecha_desde=None, fecha_hasta=None):
+        """Exporta compras agrupadas por proveedor."""
+        self.ws.title = 'Compras por Proveedor'
+        headers = [
+            'Número', 'Fecha', 'Proveedor', 'Total', 'N° Factura', 'Cajero'
+        ]
+        self.ws.append(headers)
+        for col_num, header in enumerate(headers, 1):
+            cell = self.ws.cell(row=1, column=col_num)
+            cell.font = self.header_font
+            cell.fill = self.header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = self.border
+        for c in compras:
+            cajero = ''
+            if c.usuario:
+                cajero = f"{c.usuario.first_name} {c.usuario.last_name}".strip() or c.usuario.username
+            self.ws.append([
+                c.numero,
+                c.fecha.strftime('%d/%m/%Y %H:%M'),
+                c.proveedor.nombre,
+                float(c.total),
+                c.numero_factura or '',
+                cajero,
+            ])
+        self._auto_adjust_columns()
+        base = f'compras_proveedor_{fecha_desde}_{fecha_hasta}' if fecha_desde else 'compras_proveedor'
+        return self._generate_response(base)
+
     def _auto_adjust_columns(self):
         """Ajusta automáticamente el ancho de las columnas"""
         for column_cells in self.ws.columns:

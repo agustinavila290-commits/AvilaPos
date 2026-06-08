@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import TicketCuentaCorriente, DetalleTicketCC
+from .models import TicketCuentaCorriente, DetalleTicketCC, PagoTicketCC
 from .serializers import (
     TicketCuentaCorrienteSerializer,
     TicketCuentaCorrienteListSerializer,
@@ -13,6 +13,8 @@ from .serializers import (
     AgregarItemSerializer,
     DevolverItemSerializer,
     CerrarTicketSerializer,
+    RegistrarPagoSerializer,
+    PagoTicketCCSerializer,
 )
 from .services import TicketCuentaCorrienteService
 from apps.clientes.models import Cliente
@@ -139,4 +141,48 @@ class TicketCuentaCorrienteViewSet(viewsets.ModelViewSet):
         return Response({
             'ticket': TicketCuentaCorrienteSerializer(ticket).data,
             'venta': VentaSerializer(venta).data,
+        })
+
+    @action(detail=True, methods=['post'])
+    def registrar_pago(self, request, pk=None):
+        """Registra un pago parcial en el ticket."""
+        ticket = self.get_object()
+        if ticket.estado == TicketCuentaCorriente.Estado.ABONADO:
+            return Response({'error': 'El ticket ya está abonado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = RegistrarPagoSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+
+        pago = PagoTicketCC.objects.create(
+            ticket=ticket,
+            usuario=request.user,
+            monto=data['monto'],
+            metodo_pago=data['metodo_pago'],
+            observacion=data.get('observacion', ''),
+        )
+        ticket.refresh_from_db()
+        return Response({
+            'pago': PagoTicketCCSerializer(pago).data,
+            'saldo_pendiente': str(ticket.saldo_pendiente),
+            'ticket': TicketCuentaCorrienteSerializer(ticket).data,
+        })
+
+    @action(detail=False, methods=['get'])
+    def saldo_cliente(self, request):
+        """Saldo total de CC de un cliente (suma de tickets A_SALDAR menos pagos)."""
+        cliente_id = request.query_params.get('cliente_id')
+        if not cliente_id:
+            return Response({'error': 'Se requiere cliente_id'}, status=status.HTTP_400_BAD_REQUEST)
+        from django.db.models import Sum
+        tickets = TicketCuentaCorriente.objects.filter(cliente_id=cliente_id, estado='A_SALDAR')
+        total_deuda = tickets.aggregate(t=Sum('total'))['t'] or 0
+        pagado = PagoTicketCC.objects.filter(ticket__in=tickets).aggregate(p=Sum('monto'))['p'] or 0
+        saldo = max(0, float(total_deuda) - float(pagado))
+        return Response({
+            'cliente_id': int(cliente_id),
+            'tickets_abiertos': tickets.count(),
+            'total_deuda': float(total_deuda),
+            'total_pagado': float(pagado),
+            'saldo_pendiente': saldo,
         })

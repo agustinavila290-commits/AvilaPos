@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import JsBarcode from 'jsbarcode';
 import productosService from '../services/productosService';
+import { getProveedores } from '../services/comprasService';
 
 function filtrarPorTexto(lista, texto, campoNombre = 'nombre') {
   if (!texto || !texto.trim()) return lista;
@@ -16,6 +17,7 @@ export default function ProductoNuevo() {
   const returnTo = location.state?.returnTo;
   const [marcas, setMarcas] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -67,6 +69,9 @@ export default function ProductoNuevo() {
         pct_web: MARGEN_DEFAULT.web,
         pct_tarjeta: MARGEN_DEFAULT.tarjeta,
         stock_inicial: '',
+        stock_minimo: '',
+        punto_reorden: '',
+        proveedor_habitual: '',
         activo: true
       }
     ]
@@ -139,6 +144,9 @@ export default function ProductoNuevo() {
       ]);
       setMarcas(allMarcas);
       setCategorias(allCategorias);
+      getProveedores({ activo: true, page_size: 200 })
+        .then(d => setProveedores(Array.isArray(d) ? d : (d?.results || [])))
+        .catch(() => {});
     } catch (error) {
       console.error('Error al cargar marcas/categorías:', error);
     } finally {
@@ -290,6 +298,9 @@ export default function ProductoNuevo() {
           precio_web: parseFloat(String(v.precio_web).replace(',', '.')) || 0,
           precio_tarjeta: (v.precio_tarjeta !== '' && v.precio_tarjeta != null) ? parseFloat(String(v.precio_tarjeta).replace(',', '.')) : 0,
           stock_inicial: v.stock_inicial !== '' && v.stock_inicial != null ? parseInt(v.stock_inicial, 10) || 0 : 0,
+          stock_minimo: v.stock_minimo !== '' && v.stock_minimo != null ? parseInt(v.stock_minimo, 10) || 0 : 0,
+          punto_reorden: v.punto_reorden !== '' && v.punto_reorden != null ? parseInt(v.punto_reorden, 10) || null : null,
+          proveedor_habitual: v.proveedor_habitual !== '' && v.proveedor_habitual != null ? parseInt(v.proveedor_habitual) || null : null,
           activo: v.activo !== false
         }))
       };
@@ -401,28 +412,28 @@ export default function ProductoNuevo() {
         <div>
           <button
             onClick={() => navigate('/productos')}
-            className="text-gray-400 hover:text-gray-200 mb-2 flex items-center"
+            className="text-brand-muted hover:text-brand-text mb-2 flex items-center text-sm"
           >
-            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Volver a Productos
           </button>
-          <h1 className="text-3xl font-bold text-gray-100">Crear producto</h1>
-          <p className="text-gray-400 mt-1">Completá los datos del producto y al menos una variante</p>
+          <h1 className="text-2xl font-bold text-brand-text">Crear producto</h1>
+          <p className="text-brand-muted mt-1 text-sm">Completá los datos del producto y al menos una variante</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card space-y-6">
         {errors.submit && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 border border-red-200 text-brand-red px-4 py-3 rounded-lg text-sm">
             {errors.submit}
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Nombre del producto *</label>
+            <label className="block text-sm font-medium text-brand-text mb-2">Nombre del producto *</label>
             <input
               type="text"
               name="nombre"
@@ -433,11 +444,11 @@ export default function ProductoNuevo() {
               className="input-field"
               placeholder="Ej: Pistón Honda CG 150"
             />
-            {errors.nombre && <p className="text-red-400 text-sm mt-1">{errors.nombre}</p>}
+            {errors.nombre && <p className="text-brand-red text-sm mt-1">{errors.nombre}</p>}
           </div>
 
           <div className="relative" ref={marcaRef}>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Marca *</label>
+            <label className="block text-sm font-medium text-brand-text mb-2">Marca *</label>
             <input
               type="text"
               value={marcaDropdownOpen ? marcaSearch : (marcaSeleccionada?.nombre || marcaSearch)}
@@ -523,11 +534,11 @@ export default function ProductoNuevo() {
               data-no-uppercase
             />
             {marcaDropdownOpen && (
-              <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
+              <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-white border border-brand-border rounded-lg shadow-lg">
                 {marcasFiltradas.map(m => (
                   <li
                     key={m.id}
-                    className={`px-3 py-2 cursor-pointer text-gray-200 ${marcasFiltradas[marcaHighlight]?.id === m.id ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                    className={`px-3 py-2 cursor-pointer text-brand-text text-sm ${marcasFiltradas[marcaHighlight]?.id === m.id ? 'bg-brand-bg' : 'hover:bg-brand-bg'}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       isSelectingRef.current = true;
@@ -544,7 +555,7 @@ export default function ProductoNuevo() {
                 ))}
                 {marcaSearch.trim() && !existeMarcaIgual && (
                   <li
-                    className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-blue-400 border-t border-gray-600"
+                    className="px-3 py-2 cursor-pointer hover:bg-brand-bg text-brand-blue border-t border-brand-border text-sm"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (creandoMarca) return;
@@ -561,11 +572,11 @@ export default function ProductoNuevo() {
                 )}
               </ul>
             )}
-            {errors.marca && <p className="text-red-400 text-sm mt-1">{errors.marca}</p>}
+            {errors.marca && <p className="text-brand-red text-sm mt-1">{errors.marca}</p>}
           </div>
 
           <div className="relative" ref={categoriaRef}>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Categoría *</label>
+            <label className="block text-sm font-medium text-brand-text mb-2">Categoría *</label>
             <input
               type="text"
               value={categoriaDropdownOpen ? categoriaSearch : (categoriaSeleccionada?.nombre || categoriaSearch)}
@@ -650,11 +661,11 @@ export default function ProductoNuevo() {
               data-no-uppercase
             />
             {categoriaDropdownOpen && (
-              <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-gray-600 rounded-lg shadow-lg">
+              <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-white border border-brand-border rounded-lg shadow-lg">
                 {categoriasFiltradas.map(c => (
                   <li
                     key={c.id}
-                    className={`px-3 py-2 cursor-pointer text-gray-200 ${categoriasFiltradas[categoriaHighlight]?.id === c.id ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                    className={`px-3 py-2 cursor-pointer text-brand-text text-sm ${categoriasFiltradas[categoriaHighlight]?.id === c.id ? 'bg-brand-bg' : 'hover:bg-brand-bg'}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       isSelectingRef.current = true;
@@ -671,7 +682,7 @@ export default function ProductoNuevo() {
                 ))}
                 {categoriaSearch.trim() && !existeCategoriaIgual && (
                   <li
-                    className="px-3 py-2 cursor-pointer hover:bg-gray-700 text-blue-400 border-t border-gray-600"
+                    className="px-3 py-2 cursor-pointer hover:bg-brand-bg text-brand-blue border-t border-brand-border text-sm"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (creandoCategoria) return;
@@ -688,30 +699,30 @@ export default function ProductoNuevo() {
                 )}
               </ul>
             )}
-            {errors.categoria && <p className="text-red-400 text-sm mt-1">{errors.categoria}</p>}
+            {errors.categoria && <p className="text-brand-red text-sm mt-1">{errors.categoria}</p>}
           </div>
         </div>
 
-        <div className="border-t border-gray-700 pt-6">
+        <div className="border-t border-brand-border pt-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-200">Variante(s)</h2>
+            <h2 className="text-lg font-semibold text-brand-text">Variante(s)</h2>
             <button
               type="button"
               onClick={addVariante}
-              className="text-blue-400 hover:text-blue-300 text-sm"
+              className="text-brand-blue hover:brightness-110 text-sm font-medium"
             >
               + Agregar otra variante
             </button>
           </div>
 
           {formData.variantes.map((v, index) => (
-            <div key={index} className="bg-gray-800/50 rounded-lg p-4 mb-4 border border-gray-700">
+            <div key={index} className="bg-brand-bg rounded-lg p-4 mb-4 border border-brand-border">
               {formData.variantes.length > 1 && (
                 <div className="flex justify-end mb-2">
                   <button
                     type="button"
                     onClick={() => removeVariante(index)}
-                    className="text-red-400 hover:text-red-300 text-sm"
+                    className="text-brand-red hover:brightness-110 text-sm"
                   >
                     Quitar variante
                   </button>
@@ -721,7 +732,7 @@ export default function ProductoNuevo() {
                 {/* Código primero, con botón de imprimir */}
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Código *</label>
+                    <label className="block text-sm font-medium text-brand-muted mb-1">Código *</label>
                     <input
                       type="text"
                       value={v.codigo ?? ''}
@@ -731,13 +742,13 @@ export default function ProductoNuevo() {
                       placeholder="Código único (primero cargar esto)"
                     />
                     {errors[`variante_${index}_codigo`] && (
-                      <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_codigo`]}</p>
+                      <p className="text-brand-red text-sm mt-1">{errors[`variante_${index}_codigo`]}</p>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => imprimirCodigoBarras(v.codigo)}
-                    className="shrink-0 px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600 flex items-center gap-2"
+                    className="btn-secondary shrink-0 px-3 py-2 flex items-center gap-2"
                     title="Imprimir código de barras (impresora térmica)"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
@@ -747,7 +758,7 @@ export default function ProductoNuevo() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Nombre variante *</label>
+                    <label className="block text-sm font-medium text-brand-muted mb-1">Nombre variante *</label>
                     <input
                       type="text"
                       value={v.nombre_variante ?? ''}
@@ -757,11 +768,11 @@ export default function ProductoNuevo() {
                       placeholder="Ej: STD, 0.25, Original"
                     />
                     {errors[`variante_${index}_nombre_variante`] && (
-                      <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_nombre_variante`]}</p>
+                      <p className="text-brand-red text-sm mt-1">{errors[`variante_${index}_nombre_variante`]}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Costo *</label>
+                    <label className="block text-sm font-medium text-brand-muted mb-1">Costo *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -771,16 +782,16 @@ export default function ProductoNuevo() {
                       className="input-field"
                     />
                     {errors[`variante_${index}_costo`] && (
-                      <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_costo`]}</p>
+                      <p className="text-brand-red text-sm mt-1">{errors[`variante_${index}_costo`]}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Precios + %: más aire; Stock en fila aparte */}
-                <div className="pt-2 border-t border-gray-700 space-y-4">
+                <div className="pt-2 border-t border-brand-border space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Mostrador *</label>
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Mostrador *</label>
                       <div className="flex gap-3 items-center">
                         <input
                           type="number"
@@ -800,15 +811,15 @@ export default function ProductoNuevo() {
                             className="input-field text-center w-20 px-2"
                             title="% margen"
                           />
-                          <span className="text-gray-400 text-sm">%</span>
+                          <span className="text-brand-muted text-sm">%</span>
                         </span>
                       </div>
                       {errors[`variante_${index}_precio_mostrador`] && (
-                        <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_precio_mostrador`]}</p>
+                        <p className="text-brand-red text-sm mt-1">{errors[`variante_${index}_precio_mostrador`]}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Web *</label>
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Web *</label>
                       <div className="flex gap-3 items-center">
                         <input
                           type="number"
@@ -828,15 +839,15 @@ export default function ProductoNuevo() {
                             className="input-field text-center w-20 px-2"
                             title="% margen"
                           />
-                          <span className="text-gray-400 text-sm">%</span>
+                          <span className="text-brand-muted text-sm">%</span>
                         </span>
                       </div>
                       {errors[`variante_${index}_precio_web`] && (
-                        <p className="text-red-400 text-sm mt-1">{errors[`variante_${index}_precio_web`]}</p>
+                        <p className="text-brand-red text-sm mt-1">{errors[`variante_${index}_precio_web`]}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Tarjeta</label>
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Tarjeta</label>
                       <div className="flex gap-3 items-center">
                         <input
                           type="number"
@@ -857,7 +868,7 @@ export default function ProductoNuevo() {
                             className="input-field text-center w-20 px-2"
                             title="% margen"
                           />
-                          <span className="text-gray-400 text-sm">%</span>
+                          <span className="text-brand-muted text-sm">%</span>
                         </span>
                       </div>
                     </div>
@@ -865,7 +876,7 @@ export default function ProductoNuevo() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="sm:col-span-1">
-                      <label className="block text-sm font-medium text-gray-400 mb-1">Stock inicial</label>
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Stock inicial</label>
                       <input
                         type="number"
                         min="0"
@@ -876,7 +887,46 @@ export default function ProductoNuevo() {
                         placeholder="Opc."
                       />
                     </div>
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Stock mínimo</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={v.stock_minimo ?? ''}
+                        onChange={(e) => handleVarianteChange(index, 'stock_minimo', e.target.value)}
+                        className="input-field"
+                        placeholder="0 = usar global"
+                      />
+                    </div>
+                    <div className="sm:col-span-1">
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Punto de reorden</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={v.punto_reorden ?? ''}
+                        onChange={(e) => handleVarianteChange(index, 'punto_reorden', e.target.value)}
+                        className="input-field"
+                        placeholder="Cant. a reponer"
+                      />
+                    </div>
                   </div>
+                  {proveedores.length > 0 && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-brand-muted mb-1">Proveedor habitual</label>
+                      <select
+                        value={v.proveedor_habitual ?? ''}
+                        onChange={(e) => handleVarianteChange(index, 'proveedor_habitual', e.target.value)}
+                        className="input-field"
+                      >
+                        <option value="">Sin proveedor habitual</option>
+                        {proveedores.map(p => (
+                          <option key={p.id} value={p.id}>{p.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -887,7 +937,7 @@ export default function ProductoNuevo() {
           <button
             type="button"
             onClick={() => navigate('/productos')}
-            className="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700"
+            className="btn-secondary px-4 py-2"
           >
             Cancelar
           </button>

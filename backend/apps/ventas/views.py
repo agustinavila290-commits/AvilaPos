@@ -22,7 +22,6 @@ from .serializers import (
 )
 from .services import VentaService
 from apps.usuarios.permissions import IsAdministrador, IsCajero
-from apps.clover.models import CloverPago
 
 
 class VentaViewSet(viewsets.ModelViewSet):
@@ -128,7 +127,8 @@ class VentaViewSet(viewsets.ModelViewSet):
                 tarjeta_cupon_numero=data.get('tarjeta_cupon_numero', ''),
                 tarjeta_codigo_autorizacion=data.get('tarjeta_codigo_autorizacion', ''),
                 descuento_porcentaje=data.get('descuento_porcentaje', 0),
-                descuento_monto=data.get('descuento_monto', 0)
+                descuento_monto=data.get('descuento_monto', 0),
+                transferencia_banco=data.get('transferencia_banco', ''),
             )
         except ValueError as e:
             return Response(
@@ -136,16 +136,6 @@ class VentaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Vincular pago Clover si se envió clover_pago_id (pago con tarjeta vía Clover)
-        clover_pago_id = data.get('clover_pago_id')
-        if clover_pago_id:
-            try:
-                pago = CloverPago.objects.get(id=clover_pago_id, venta__isnull=True)
-                pago.venta = venta
-                pago.save(update_fields=['venta'])
-            except CloverPago.DoesNotExist:
-                pass  # Ignorar si no existe o ya está vinculado
-        
         # Verificar margen bajo
         alerta_margen = None
         if venta.margen_es_bajo:
@@ -232,20 +222,99 @@ class VentaViewSet(viewsets.ModelViewSet):
     def por_cliente(self, request):
         """Historial de ventas de un cliente"""
         cliente_id = request.query_params.get('cliente_id')
-        
+
         if not cliente_id:
             return Response(
                 {'error': 'Se requiere cliente_id'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         ventas = self.get_queryset().filter(cliente_id=cliente_id)
-        
-        # Paginación
+
         page = self.paginate_queryset(ventas)
         if page is not None:
             serializer = VentaListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = VentaListSerializer(ventas, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def actualizar_datos_tarjeta(self, request, pk=None):
+        """Guarda el número de cupón y código de autorización del posnet en la venta."""
+        venta = self.get_object()
+        cupon = (request.data.get('tarjeta_cupon_numero') or '').strip()
+        auth = (request.data.get('tarjeta_codigo_autorizacion') or '').strip()
+        if not cupon or not auth:
+            return Response(
+                {'error': 'Ingresá el número de cupón y el código de autorización.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        venta.tarjeta_cupon_numero = cupon
+        venta.tarjeta_codigo_autorizacion = auth
+        venta.save(update_fields=['tarjeta_cupon_numero', 'tarjeta_codigo_autorizacion'])
+        return Response({'ok': True})
+
+    @action(detail=False, methods=['get'])
+    def transferencias_pendientes(self, request):
+        """Lista ventas con transferencia pendiente de confirmación."""
+        qs = self.get_queryset().filter(
+            metodo_pago='TRANSFERENCIA',
+            transferencia_estado='PENDIENTE',
+            estado='COMPLETADA',
+        )
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = VentaListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = VentaListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated, IsAdministrador])
+    def confirmar_transferencia(self, request, pk=None):
+        """Confirma una transferencia pendiente. Solo admin."""
+        venta = self.get_object()
+        if venta.metodo_pago != 'TRANSFERENCIA':
+            return Response({'error': 'La venta no es por transferencia.'}, status=status.HTTP_400_BAD_REQUEST)
+        if venta.transferencia_estado == 'CONFIRMADA':
+            return Response({'error': 'La transferencia ya fue confirmada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        nro_op = (request.data.get('transferencia_numero_operacion') or '').strip()
+        banco = (request.data.get('transferencia_banco') or venta.transferencia_banco or '').strip()
+        cuenta = (request.data.get('transferencia_cuenta_destino') or '').strip()
+        obs = (request.data.get('transferencia_observacion') or '').strip()
+
+        venta.transferencia_estado = 'CONFIRMADA'
+        venta.transferencia_numero_operacion = nro_op
+        venta.transferencia_banco = banco
+        venta.transferencia_cuenta_destino = cuenta
+        venta.transferencia_observacion = obs
+        venta.transferencia_confirmada_por = request.user
+        venta.transferencia_fecha_confirmacion = timezone.now()
+        venta.save(update_fields=[
+            'transferencia_estado', 'transferencia_numero_operacion',
+            'transferencia_banco', 'transferencia_cuenta_destino',
+            'transferencia_observacion', 'transferencia_confirmada_por',
+            'transferencia_fecha_confirmacion',
+        ])
+        return Response(VentaSerializer(venta).data)
+
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated, IsAdministrador])
+    def rechazar_transferencia(self, request, pk=None):
+        """Rechaza una transferencia pendiente. Solo admin."""
+        venta = self.get_object()
+        if venta.metodo_pago != 'TRANSFERENCIA':
+            return Response({'error': 'La venta no es por transferencia.'}, status=status.HTTP_400_BAD_REQUEST)
+        if venta.transferencia_estado in ('CONFIRMADA', 'RECHAZADA'):
+            return Response({'error': f'La transferencia ya está en estado {venta.transferencia_estado}.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        obs = (request.data.get('transferencia_observacion') or '').strip()
+        venta.transferencia_estado = 'RECHAZADA'
+        venta.transferencia_observacion = obs
+        venta.transferencia_confirmada_por = request.user
+        venta.transferencia_fecha_confirmacion = timezone.now()
+        venta.save(update_fields=[
+            'transferencia_estado', 'transferencia_observacion',
+            'transferencia_confirmada_por', 'transferencia_fecha_confirmacion',
+        ])
+        return Response(VentaSerializer(venta).data)

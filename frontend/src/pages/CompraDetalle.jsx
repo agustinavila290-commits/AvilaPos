@@ -191,10 +191,10 @@ export default function CompraDetalle() {
                         {detalle.cantidad}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        ${detalle.costo_unitario?.toFixed(2)}
+                        ${detalle.costo_unitario != null ? Number(detalle.costo_unitario).toFixed(2) : '0.00'}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">
-                        ${detalle.subtotal?.toFixed(2)}
+                        ${detalle.subtotal != null ? Number(detalle.subtotal).toFixed(2) : '0.00'}
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 hidden md:table-cell">
                         {detalle.actualizar_costo && (
@@ -290,7 +290,7 @@ export default function CompraDetalle() {
           <SoftCard title="Total" icon="💰">
             <div className="text-center py-2">
               <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600">
-                ${compra.total?.toFixed(2)}
+                ${compra.total != null ? Number(compra.total).toFixed(2) : '0.00'}
               </p>
             </div>
           </SoftCard>

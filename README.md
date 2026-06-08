@@ -1,8 +1,8 @@
 # Sistema de Gestión - Casa de Repuestos de Motos
 
-**Versión**: 1.0.0 (9 módulos completados)  
-**Estado**: ✅ Sistema COMPLETO - 100% funcional  
-**Última actualización**: 17 de febrero de 2026
+**Versión**: 1.1.0 (estabilización e integraciones)  
+**Estado**: ✅ Operativo en producción + 🚧 ajustes AFIP/Clover en curso  
+**Última actualización**: 13 de marzo de 2026
 
 Sistema integral para casa de repuestos de motos: inventario, ventas (POS), clientes, compras, reportes, configuración, devoluciones. Backend Django + Frontend React (Vite). Incluye instalador automático en Windows (`.bat`) y soporte para SQLite en desarrollo.
 
@@ -12,17 +12,16 @@ Sistema integral para casa de repuestos de motos: inventario, ventas (POS), clie
 
 ```
 ╔══════════════════════════════════════════════════════════╗
-║              🎉 SISTEMA 100% COMPLETO 🎉                 ║
+║           ✅ SISTEMA OPERATIVO + MEJORAS ACTIVAS         ║
 ║                                                          ║
-║  ✅ 9/9 Módulos Implementados (100%)                    ║
-║  ✅ Devoluciones y Notas de Crédito                     ║
-║  ✅ Configuración centralizada                          ║
-║  ✅ Backend Django + Frontend React                      ║
-║  ✅ Base de datos configurada                           ║
-║  ✅ Documentación completa                              ║
-║  ✅ Pruebas exitosas                                    ║
+║  ✅ POS, inventario, ventas, compras y reportes         ║
+║  ✅ Cuenta corriente y tickets                           ║
+║  ✅ Backend Django + Frontend React en producción       ║
+║  ✅ Tienda web integrada (en evolución)                 ║
+║  🚧 Facturación AFIP: etapa final de compatibilidad     ║
+║  🚧 Clover: integración LAN/REST Pay Display en curso   ║
 ║                                                          ║
-║  🚀 VERSIÓN 1.0.0 - PRODUCCIÓN                          ║
+║  🚀 VERSIÓN 1.1.0 - PRODUCCIÓN + ESTABILIZACIÓN         ║
 ╚══════════════════════════════════════════════════════════╝
 ```
 
@@ -37,8 +36,9 @@ Sistema integral para casa de repuestos de motos: inventario, ventas (POS), clie
 - ✅ **Módulo 8**: Configuración del Sistema
 - ✅ **Módulo 9**: Devoluciones y Notas de Crédito
 
-### 🎉 Sistema Completo
-Todos los módulos planificados han sido implementados y probados exitosamente.
+### Estado funcional
+El núcleo del sistema está operativo (POS, stock, clientes, ventas, compras y reportes).  
+Actualmente se continúa con ajustes de integración externa (AFIP y Clover).
 
 ---
 
@@ -680,13 +680,16 @@ DetalleDevolucion:
 - [x] **Módulo 8: Configuración** ✅
 - [x] **Módulo 9: Devoluciones** ✅
 
-### Mejoras recientes (febrero 2026)
+### Mejoras recientes (febrero-marzo 2026)
 - **Instalación en Windows**: `instalar_todo.bat` instala Python (o vía winget), Node, venv, pip, npm, migraciones y configuración inicial. `iniciar_sistema.bat` arranca backend y frontend.
 - **Búsqueda de productos**: Criterio unificado en Productos, POS y Registrar compra: debounce 200 ms, búsqueda al salir del campo (onBlur), cancelación de peticiones anteriores. Backend: atajo por código exacto para respuestas casi instantáneas.
 - **Ticket térmico**: Rediseño tipo casa de repuestos (encabezado, código por ítem, totales, pie). Componente: `frontend/src/components/TicketTermico.jsx`.
 - **POS**: Modal de selección de cliente (listado + búsqueda + “Agregar cliente”) en lugar de ir directo a crear. Integración opcional con Clover para pagos con tarjeta.
 - **Inventario**: API de stock estable (serializers defensivos, índices). Gráficos en Reportes con contenedores de tamaño mínimo para evitar avisos de Recharts.
 - **Detalle de venta**: Soporte tema oscuro y formato numérico seguro cuando la API devuelve strings.
+- **Branding comercial**: tickets/presupuestos/facturas con datos de Avila Moto Repuesto (titular, CUIT y teléfono).
+- **AFIP (real)**: mejoras de compatibilidad con distintas versiones de `pyafipws` (WSAA/WSFE, token/sign, timezone, serialización de importes y diagnóstico XML).
+- **Clover**: preparación de flujo LAN con Clover Mini (REST Pay Display), pendiente de cierre de credenciales/app setting en Clover Developer.
 
 ---
 
@@ -977,6 +980,6 @@ Para dudas o problemas durante el desarrollo:
 
 ---
 
-**Última actualización**: 17 de febrero de 2026  
-**Versión**: 1.0.0 (9 módulos completados)  
-**Estado**: ✅ Sistema completo. Instalación: `instalar_todo.bat` → `iniciar_sistema.bat`
+**Última actualización**: 13 de marzo de 2026  
+**Versión**: 1.1.0 (estabilización e integraciones)  
+**Estado**: ✅ Operativo en producción. Instalación: `instalar_todo.bat` → `iniciar_sistema.bat`

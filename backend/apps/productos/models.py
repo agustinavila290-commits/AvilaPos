@@ -164,6 +164,28 @@ class VarianteProducto(models.Model):
         default=Decimal('0.00')
     )
     
+    # Umbrales de inventario por producto
+    stock_minimo = models.IntegerField(
+        default=0,
+        verbose_name='Stock Mínimo',
+        help_text='Cantidad mínima deseada. 0 = usar umbral global'
+    )
+    punto_reorden = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Punto de Reorden',
+        help_text='Cantidad a reponer cuando se alcanza el stock mínimo'
+    )
+    proveedor_habitual = models.ForeignKey(
+        'compras.Proveedor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='productos_habituales',
+        verbose_name='Proveedor Habitual',
+        help_text='Proveedor por defecto para este producto'
+    )
+
     # Estado
     activo = models.BooleanField(
         default=True,

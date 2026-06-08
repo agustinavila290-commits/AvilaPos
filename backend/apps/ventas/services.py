@@ -24,7 +24,8 @@ class VentaService:
         tarjeta_cupon_numero='',
         tarjeta_codigo_autorizacion='',
         descuento_porcentaje=0,
-        descuento_monto=0
+        descuento_monto=0,
+        transferencia_banco='',
     ):
         """
         Crea una venta completa con sus detalles y actualiza el stock.
@@ -87,6 +88,9 @@ class VentaService:
         if total < 0:
             raise ValueError("El total no puede ser negativo")
         
+        # Estado de transferencia: PENDIENTE al crear, vacío para otros métodos
+        t_estado = Venta.EstadoTransferencia.PENDIENTE if metodo_pago == 'TRANSFERENCIA' else ''
+
         # Crear venta
         venta = Venta.objects.create(
             cliente=cliente,
@@ -99,6 +103,8 @@ class VentaService:
             metodo_pago=metodo_pago,
             tarjeta_cupon_numero=(tarjeta_cupon_numero or '').strip(),
             tarjeta_codigo_autorizacion=(tarjeta_codigo_autorizacion or '').strip(),
+            transferencia_banco=(transferencia_banco or '').strip(),
+            transferencia_estado=t_estado,
             estado=Venta.EstadoVenta.COMPLETADA
         )
         

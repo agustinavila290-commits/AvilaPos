@@ -8,8 +8,11 @@ import {
   agregarItem,
   devolverItem,
   cerrarTicket,
+  registrarPago,
 } from '../services/cuentaCorrienteService';
 import productosService from '../services/productosService';
+import TicketCC from '../components/TicketCC';
+import { openWhatsApp, msgEstadoCuenta } from '../utils/whatsapp';
 
 const DEBOUNCE_MS = 200;
 
@@ -39,6 +42,14 @@ export default function TicketDetalle() {
   const [modalCerrar, setModalCerrar] = useState(false);
   const [metodoPago, setMetodoPago] = useState('EFECTIVO');
   const [cerrando, setCerrando] = useState(false);
+  const [mostrarTicketCC, setMostrarTicketCC] = useState(false);
+
+  // Pago parcial
+  const [modalPago, setModalPago] = useState(false);
+  const [montoPago, setMontoPago] = useState('');
+  const [metodoPagoParcial, setMetodoPagoParcial] = useState('EFECTIVO');
+  const [obsPago, setObsPago] = useState('');
+  const [registrandoPago, setRegistrandoPago] = useState(false);
 
   const runSearch = useCallback(async (term) => {
     if (!term?.trim()) {
@@ -144,6 +155,24 @@ export default function TicketDetalle() {
     }
   };
 
+  const handleRegistrarPago = async () => {
+    if (!montoPago || Number(montoPago) <= 0) { setError('Ingresá un monto válido'); return; }
+    try {
+      setRegistrandoPago(true);
+      setError('');
+      await registrarPago(ticket.id, {
+        monto: Number(montoPago),
+        metodo_pago: metodoPagoParcial,
+        observacion: obsPago.trim(),
+      });
+      setModalPago(false);
+      setMontoPago('');
+      setObsPago('');
+      cargarTicket();
+    } catch (e) { setError(e.response?.data?.error || 'Error al registrar pago'); }
+    finally { setRegistrandoPago(false); }
+  };
+
   const handleCerrar = async () => {
     if (!ticket) return;
     setCerrando(true);
@@ -212,14 +241,46 @@ export default function TicketDetalle() {
             </span>
           </p>
         </div>
-        {esAbierto && detalles.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setModalCerrar(true)}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold"
+            onClick={() => setMostrarTicketCC(true)}
+            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm flex items-center gap-1"
           >
-            Abonar
+            🖨️ Imprimir Ticket
           </button>
-        )}
+          {/* WhatsApp estado de cuenta */}
+          {(ticket.cliente_telefono || ticket.cliente_whatsapp) && (
+            <button
+              onClick={() => openWhatsApp(
+                ticket.cliente_whatsapp || ticket.cliente_telefono,
+                msgEstadoCuenta({
+                  numero: ticket.numero,
+                  cliente_nombre: ticket.cliente_nombre,
+                  total: ticket.total,
+                  saldo_pendiente: ticket.saldo_pendiente,
+                  fecha_apertura: ticket.fecha_apertura,
+                  fecha_vencimiento: ticket.fecha_vencimiento,
+                })
+              )}
+              className="px-3 py-2 text-white rounded-lg font-semibold text-sm flex items-center gap-1 hover:brightness-110"
+              style={{ backgroundColor: '#25D366' }}
+              title="Enviar estado de cuenta por WhatsApp"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              Estado de Cuenta
+            </button>
+          )}
+          {esAbierto && detalles.length > 0 && (
+            <button
+              onClick={() => setModalCerrar(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold"
+            >
+              Abonar
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -228,12 +289,60 @@ export default function TicketDetalle() {
         </div>
       )}
 
-      <div className="card flex justify-between items-center">
-        <span className="text-lg font-semibold text-gray-800">Total</span>
-        <span className="text-2xl font-bold text-green-600">
-          {formatCurrency(ticket.total)}
-        </span>
+      {/* Resumen financiero */}
+      <div className="card space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-lg font-semibold text-gray-800">Total del ticket</span>
+          <span className="text-2xl font-bold text-green-600">{formatCurrency(ticket.total)}</span>
+        </div>
+        {ticket.pagos?.length > 0 && (
+          <>
+            <div className="flex justify-between text-sm text-gray-600 border-t border-slate-100 pt-2">
+              <span>Pagos recibidos ({ticket.pagos.length})</span>
+              <span className="text-green-700 font-semibold">
+                -{formatCurrency(ticket.pagos.reduce((s, p) => s + Number(p.monto), 0))}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm font-bold border-t border-slate-200 pt-2">
+              <span className="text-slate-700">Saldo pendiente</span>
+              <span className={Number(ticket.saldo_pendiente) === 0 ? 'text-green-600' : 'text-amber-700'}>
+                {formatCurrency(ticket.saldo_pendiente)}
+              </span>
+            </div>
+          </>
+        )}
+        {esAbierto && (
+          <div className="pt-2">
+            <button
+              onClick={() => { setMontoPago(''); setObsPago(''); setModalPago(true); }}
+              className="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-semibold text-sm"
+            >
+              💰 Registrar Pago Parcial
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Historial de pagos parciales */}
+      {ticket.pagos?.length > 0 && (
+        <div className="card">
+          <h3 className="font-semibold text-slate-700 mb-3 text-sm">Pagos registrados</h3>
+          <div className="space-y-2">
+            {ticket.pagos.map(p => (
+              <div key={p.id} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-sm">
+                <div>
+                  <span className="font-semibold text-slate-700">{p.metodo_pago_display}</span>
+                  {p.observacion && <span className="text-slate-500 ml-2">{p.observacion}</span>}
+                  <div className="text-xs text-slate-400">
+                    {p.usuario_nombre} · {new Date(p.fecha).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                  </div>
+                </div>
+                <span className="font-bold text-green-600">{formatCurrency(p.monto)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {esAbierto && (
         <div className="card">
@@ -437,6 +546,52 @@ export default function TicketDetalle() {
               >
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostrarTicketCC && (
+        <TicketCC ticket={ticket} onClose={() => setMostrarTicketCC(false)} />
+      )}
+
+      {/* Modal pago parcial */}
+      {modalPago && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 w-full max-w-sm">
+            <h2 className="text-base font-bold text-slate-800 mb-4">Registrar pago parcial</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Monto <span className="text-red-500">*</span></label>
+                <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
+                  min={0.01} step={0.01} className="input-field w-full" autoFocus
+                  placeholder={`Saldo: ${formatCurrency(ticket.saldo_pendiente)}`} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Método</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[['EFECTIVO','Contado','#16A34A'],['TRANSFERENCIA','Transfer.','#7C3AED'],['TARJETA','Tarjeta','#2563EB']].map(([v,l,c]) => (
+                    <button key={v} onClick={() => setMetodoPagoParcial(v)}
+                      className="py-1.5 rounded text-xs font-bold transition-all"
+                      style={metodoPagoParcial === v ? { backgroundColor: c, color:'#fff', border:`1px solid ${c}` } : { backgroundColor:'#F3F4F6', color:'#374151', border:'1px solid #E5E7EB' }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Observación</label>
+                <input type="text" value={obsPago} onChange={e => setObsPago(e.target.value)}
+                  className="input-field w-full" placeholder="Opcional..." />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={handleRegistrarPago} disabled={registrandoPago || !montoPago}
+                className="btn-success flex-1 py-2.5 text-sm disabled:opacity-50">
+                {registrandoPago ? 'Guardando...' : 'Registrar pago'}
+              </button>
+              <button onClick={() => { setModalPago(false); setError(''); }}
+                className="btn-secondary px-4 py-2.5 text-sm">Cancelar</button>
             </div>
           </div>
         </div>

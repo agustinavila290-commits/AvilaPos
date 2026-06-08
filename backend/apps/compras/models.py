@@ -279,3 +279,198 @@ class CompraFacturaAdjunto(models.Model):
 
     def __str__(self):
         return f"Factura compra #{self.compra.numero} ({self.orden})"
+
+
+class HistorialCosto(models.Model):
+    """Registro histórico de cambios de costo por variante de producto."""
+
+    variante = models.ForeignKey(
+        VarianteProducto,
+        on_delete=models.CASCADE,
+        related_name='historial_costos',
+        verbose_name='Variante'
+    )
+    costo_anterior = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Costo Anterior'
+    )
+    costo_nuevo = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Costo Nuevo'
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='cambios_costo',
+        verbose_name='Usuario'
+    )
+    fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
+    referencia_tipo = models.CharField(
+        max_length=50, blank=True, null=True, verbose_name='Tipo de referencia',
+        help_text='compra, orden, manual'
+    )
+    referencia_id = models.IntegerField(blank=True, null=True, verbose_name='ID de referencia')
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones')
+
+    class Meta:
+        verbose_name = 'Historial de Costo'
+        verbose_name_plural = 'Historial de Costos'
+        ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['variante', '-fecha']),
+        ]
+
+    def __str__(self):
+        return f"{self.variante.codigo}: ${self.costo_anterior} → ${self.costo_nuevo} ({self.fecha.strftime('%Y-%m-%d')})"
+
+    @property
+    def variacion_porcentaje(self):
+        if self.costo_anterior and self.costo_anterior > 0:
+            return ((self.costo_nuevo - self.costo_anterior) / self.costo_anterior) * 100
+        return 0
+
+
+class OrdenCompra(models.Model):
+    """
+    Orden de compra: pedido emitido a un proveedor antes de recibir la mercadería.
+    Permite recepción parcial o total y genera una Compra al recibir.
+    """
+
+    class Estado(models.TextChoices):
+        BORRADOR = 'BORRADOR', 'Borrador'
+        EMITIDA = 'EMITIDA', 'Emitida'
+        RECIBIDA_PARCIAL = 'RECIBIDA_PARCIAL', 'Recibida Parcialmente'
+        RECIBIDA_TOTAL = 'RECIBIDA_TOTAL', 'Recibida Totalmente'
+        CANCELADA = 'CANCELADA', 'Cancelada'
+
+    numero = models.IntegerField(unique=True, verbose_name='Número de Orden')
+    proveedor = models.ForeignKey(
+        Proveedor,
+        on_delete=models.PROTECT,
+        related_name='ordenes_compra',
+        verbose_name='Proveedor'
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='ordenes_compra',
+        verbose_name='Usuario'
+    )
+    deposito = models.ForeignKey(
+        Deposito,
+        on_delete=models.PROTECT,
+        related_name='ordenes_compra',
+        verbose_name='Depósito de destino'
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.BORRADOR,
+        verbose_name='Estado'
+    )
+    fecha_emision = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de emisión')
+    fecha_esperada = models.DateField(
+        null=True, blank=True, verbose_name='Fecha esperada de recepción'
+    )
+    numero_referencia = models.CharField(
+        max_length=100, blank=True, null=True,
+        verbose_name='N° referencia proveedor',
+        help_text='Número de cotización/referencia del proveedor'
+    )
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones internas')
+    notas_proveedor = models.TextField(
+        blank=True, null=True, verbose_name='Notas para el proveedor'
+    )
+
+    class Meta:
+        verbose_name = 'Orden de Compra'
+        verbose_name_plural = 'Órdenes de Compra'
+        ordering = ['-fecha_emision']
+        indexes = [
+            models.Index(fields=['numero']),
+            models.Index(fields=['proveedor', '-fecha_emision']),
+            models.Index(fields=['estado']),
+        ]
+
+    def __str__(self):
+        return f"OC #{self.numero} — {self.proveedor.nombre} ({self.get_estado_display()})"
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.numero:
+            ultima = OrdenCompra.objects.order_by('-numero').first()
+            self.numero = (ultima.numero + 1) if ultima else 1
+        super().save(*args, **kwargs)
+
+    @property
+    def total_estimado(self):
+        return sum(
+            (d.costo_estimado or 0) * d.cantidad_pedida
+            for d in self.detalles.all()
+        )
+
+    @property
+    def porcentaje_recibido(self):
+        detalles = list(self.detalles.all())
+        if not detalles:
+            return 0
+        total_pedido = sum(d.cantidad_pedida for d in detalles)
+        total_recibido = sum(d.cantidad_recibida for d in detalles)
+        if total_pedido == 0:
+            return 0
+        return round((total_recibido / total_pedido) * 100, 1)
+
+
+class DetalleOrdenCompra(models.Model):
+    """Ítem dentro de una Orden de Compra."""
+
+    orden = models.ForeignKey(
+        OrdenCompra,
+        on_delete=models.CASCADE,
+        related_name='detalles',
+        verbose_name='Orden'
+    )
+    variante = models.ForeignKey(
+        VarianteProducto,
+        on_delete=models.PROTECT,
+        related_name='ordenes_compra',
+        verbose_name='Producto'
+    )
+    cantidad_pedida = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name='Cantidad pedida'
+    )
+    cantidad_recibida = models.IntegerField(
+        default=0,
+        verbose_name='Cantidad recibida'
+    )
+    costo_estimado = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name='Costo estimado unitario'
+    )
+    costo_real = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name='Costo real unitario (al recibir)'
+    )
+
+    class Meta:
+        verbose_name = 'Detalle de Orden de Compra'
+        verbose_name_plural = 'Detalles de Órdenes de Compra'
+        unique_together = [['orden', 'variante']]
+        ordering = ['id']
+
+    @property
+    def cantidad_pendiente(self):
+        return self.cantidad_pedida - self.cantidad_recibida
+
+    @property
+    def completado(self):
+        return self.cantidad_recibida >= self.cantidad_pedida
+
+    def __str__(self):
+        return f"{self.variante.codigo}: {self.cantidad_recibida}/{self.cantidad_pedida}"

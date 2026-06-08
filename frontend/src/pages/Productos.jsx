@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import productosService from '../services/productosService';
 import { useAuth } from '../hooks/useAuth';
+import { getModelosMoto, getProductosPorMoto } from '../services/inventarioService';
 
 const DEBOUNCE_MS = 200;
 
@@ -14,6 +15,9 @@ export default function Productos() {
   const debounceTimeoutRef = useRef(null);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const [modelosMoto, setModelosMoto] = useState([]);
+  const [motoSeleccionada, setMotoSeleccionada] = useState('');
+  const [filtroPorMoto, setFiltroPorMoto] = useState(false);
 
   const loadVariantes = useCallback(async () => {
     try {
@@ -51,7 +55,27 @@ export default function Productos() {
 
   useEffect(() => {
     loadVariantes();
+    getModelosMoto().then(setModelosMoto).catch(() => {});
   }, [loadVariantes]);
+
+  const handleFiltrarPorMoto = async (motoId) => {
+    setMotoSeleccionada(motoId);
+    if (!motoId) {
+      setFiltroPorMoto(false);
+      loadVariantes();
+      return;
+    }
+    setFiltroPorMoto(true);
+    setLoading(true);
+    try {
+      const res = await getProductosPorMoto(motoId);
+      setVariantes(res.results || []);
+    } catch {
+      setVariantes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const mountedRef = useRef(false);
   // Debounce: al dejar de escribir, buscar tras DEBOUNCE_MS
@@ -129,6 +153,36 @@ export default function Productos() {
         )}
       </div>
 
+      {/* Filtro por moto */}
+      {modelosMoto.length > 0 && (
+        <div className="card flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-600">
+            <svg className="w-4 h-4 inline mr-1 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Filtrar por moto:
+          </span>
+          <select
+            value={motoSeleccionada}
+            onChange={e => handleFiltrarPorMoto(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+          >
+            <option value="">Todas las motos</option>
+            {modelosMoto.map(m => (
+              <option key={m.id} value={m.id}>{m.marca} {m.modelo} {m.anio}</option>
+            ))}
+          </select>
+          {filtroPorMoto && (
+            <button
+              onClick={() => handleFiltrarPorMoto('')}
+              className="text-xs text-red-500 underline"
+            >
+              Quitar filtro
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Búsqueda - Soft UI */}
       <div className="card">
         <div className="relative">
@@ -143,7 +197,8 @@ export default function Productos() {
             value={searchTerm}
             onChange={handleSearchChange}
             onBlur={handleSearchBlur}
-            className="search-input pl-12 uppercase-input"
+            disabled={filtroPorMoto}
+            className="search-input pl-12 uppercase-input disabled:opacity-50"
           />
           {searching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Buscando...</div>

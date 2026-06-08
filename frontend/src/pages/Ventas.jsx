@@ -3,15 +3,25 @@
  */
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getVentas, getResumenDiario } from '../services/ventasService';
+import { getVentas, getVenta, getResumenDiario } from '../services/ventasService';
+import { generarPdfFactura, regenerarPdfFactura } from '../services/facturacionService';
 import MetricCard from '../components/MetricCard';
 import SoftCard from '../components/SoftCard';
+import TicketTermico from '../components/TicketTermico';
 
 export default function Ventas() {
   const [ventas, setVentas] = useState([]);
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [ventaImprimir, setVentaImprimir] = useState(null);
+
+  const handleReimprimir = async (id) => {
+    try {
+      const data = await getVenta(id);
+      setVentaImprimir(data);
+    } catch { setError('Error al cargar ticket para reimprimir'); }
+  };
   
   // Filtros
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -48,8 +58,26 @@ export default function Ventas() {
 
   const handleBuscar = async (e) => {
     e.preventDefault();
-    // Implementar búsqueda si hay término
     cargarDatos();
+  };
+
+  const abrirPdf = async (facturaId) => {
+    try {
+      const resp = await generarPdfFactura(facturaId);
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      window.open(window.URL.createObjectURL(blob), '_blank');
+    } catch {
+      alert('No se pudo abrir el PDF.');
+    }
+  };
+
+  const handleRegenerarPdf = async (facturaId) => {
+    try {
+      await regenerarPdfFactura(facturaId);
+      await cargarDatos();
+    } catch {
+      alert('No se pudo regenerar el PDF.');
+    }
   };
 
   const getEstadoColor = (estado) => {
@@ -197,6 +225,9 @@ export default function Ventas() {
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">
                     Estado
                   </th>
+                  <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">
+                    Factura
+                  </th>
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold text-gray-700 uppercase">
                     Acciones
                   </th>
@@ -228,13 +259,53 @@ export default function Ventas() {
                         {venta.estado_display}
                       </span>
                     </td>
+                    <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                      {venta.factura_info ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => abrirPdf(venta.factura_info.id)}
+                            className="px-2 py-1 text-xs font-semibold rounded bg-brand-blue text-white hover:brightness-110 transition-all"
+                            title={`Ver PDF factura ${venta.factura_info.numero_completo}`}
+                          >
+                            PDF
+                          </button>
+                          {!venta.factura_info.pdf_archivo && (
+                            <button
+                              onClick={() => handleRegenerarPdf(venta.factura_info.id)}
+                              className="px-2 py-1 text-xs font-semibold rounded bg-amber-500 text-white hover:brightness-110 transition-all"
+                              title="Regenerar PDF"
+                            >
+                              Regen.
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        venta.estado_display === 'Completada' && (
+                          <Link
+                            to={`/ventas/${venta.id}`}
+                            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                          >
+                            Facturar
+                          </Link>
+                        )
+                      )}
+                    </td>
                     <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
-                      <Link
-                        to={`/ventas/${venta.id}`}
-                        className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
-                      >
-                        Ver Detalle →
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleReimprimir(venta.id)}
+                          className="text-slate-500 hover:text-blue-600 transition-colors"
+                          title="Reimprimir ticket"
+                        >
+                          🖨️
+                        </button>
+                        <Link
+                          to={`/ventas/${venta.id}`}
+                          className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+                        >
+                          Ver →
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -243,6 +314,10 @@ export default function Ventas() {
           </div>
         )}
       </SoftCard>
+
+      {ventaImprimir && (
+        <TicketTermico venta={ventaImprimir} onClose={() => setVentaImprimir(null)} />
+      )}
     </div>
   );
 }

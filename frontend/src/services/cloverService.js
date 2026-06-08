@@ -1,6 +1,7 @@
 /**
  * Servicio para integración con Clover POSnet.
- * Procesar pagos con tarjeta y consultar configuración.
+ * DESACTIVADO: Clover fue descartado del flujo operativo.
+ * Se conserva el archivo para no romper imports existentes.
  */
 import api from './api';
 

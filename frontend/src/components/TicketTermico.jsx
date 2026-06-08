@@ -4,52 +4,12 @@
  */
 import { useRef } from 'react';
 import { EMPRESA } from '../constants/empresa';
+import { imprimirTicket } from '../utils/printTicket';
 
 export default function TicketTermico({ venta, onClose }) {
   const printRef = useRef(null);
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    const WindowPrint = window.open('', '', 'width=320,height=640');
-    WindowPrint.document.write('<html><head><title>Ticket de Venta</title>');
-    WindowPrint.document.write('<style>');
-    WindowPrint.document.write(`
-      @media print {
-        @page { size: 80mm auto; margin: 0; }
-        body { margin: 0; padding: 0; }
-      }
-      body {
-        font-family: 'Courier New', monospace;
-        font-size: 11px;
-        line-height: 1.35;
-        margin: 0;
-        padding: 4mm;
-        width: 72mm;
-        max-width: 72mm;
-      }
-      .line { border-bottom: 1px dashed #000; margin: 6px 0; }
-      .line-double { border-bottom: 2px solid #000; margin: 8px 0; }
-      .center { text-align: center; }
-      .bold { font-weight: bold; }
-      .small { font-size: 10px; }
-      .row { display: flex; justify-content: space-between; margin: 2px 0; }
-      .row-items { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0; gap: 4px; }
-      .item-cod { font-size: 10px; color: #333; }
-      .item-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .item-nums { white-space: nowrap; text-align: right; }
-      .total-line { border-top: 1px dashed #000; padding-top: 6px; margin-top: 6px; }
-      .total-final { font-size: 13px; font-weight: bold; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
-    `);
-    WindowPrint.document.write('</style></head><body>');
-    WindowPrint.document.write(printContent.innerHTML);
-    WindowPrint.document.write('</body></html>');
-    WindowPrint.document.close();
-    WindowPrint.focus();
-    setTimeout(() => {
-      WindowPrint.print();
-      WindowPrint.close();
-    }, 250);
-  };
+  const handlePrint = () => imprimirTicket(printRef.current.innerHTML, `Ticket #${numeroVenta}`);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return '--/--/---- --:--';
@@ -90,7 +50,13 @@ export default function TicketTermico({ venta, onClose }) {
   const clienteNombre = venta?.cliente_nombre || 'Consumidor final';
   const clienteDni = venta?.cliente_info?.dni || venta?.cliente_dni || '';
   const vendedor = venta?.usuario_nombre || 'Vendedor';
-  const metodoPago = venta?.metodo_pago_display || (venta?.metodo_pago === 'TARJETA' ? 'TARJETA' : 'EFECTIVO');
+  const metodoPago = venta?.metodo_pago_display || venta?.metodo_pago || 'EFECTIVO';
+  const esTarjeta     = venta?.metodo_pago === 'TARJETA';
+  const esTransfer    = venta?.metodo_pago === 'TRANSFERENCIA';
+  const cuponNum      = venta?.tarjeta_cupon_numero?.trim();
+  const authNum       = venta?.tarjeta_codigo_autorizacion?.trim();
+  const transBanco    = venta?.transferencia_banco?.trim();
+  const transNroOp    = venta?.transferencia_numero_operacion?.trim();
   const detalles = venta?.detalles ?? [];
   const subtotal = venta?.subtotal ?? venta?.total ?? 0;
   const descuento = venta?.descuento_monto ?? 0;
@@ -98,19 +64,19 @@ export default function TicketTermico({ venta, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-600 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Vista previa del ticket</h2>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-800">Vista previa del ticket</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl leading-none"
+            className="text-slate-500 hover:text-slate-700 text-2xl leading-none"
             aria-label="Cerrar"
           >
             ×
           </button>
         </div>
 
-        <div className="px-4 py-3 max-h-[70vh] overflow-auto bg-gray-100 dark:bg-slate-700/30">
+        <div className="px-4 py-3 max-h-[70vh] overflow-auto bg-slate-50">
           <div ref={printRef} className="bg-white p-3 mx-auto" style={{ width: '72mm', fontFamily: 'Courier New, monospace', fontSize: '11px' }}>
             {/* Encabezado */}
             <div className="line-double" />
@@ -128,6 +94,18 @@ export default function TicketTermico({ venta, onClose }) {
             {clienteDni && <div className="row small"><span>DNI/CUIT</span><span>{clienteDni}</span></div>}
             <div className="row small"><span>Atendió</span><span>{vendedor}</span></div>
             <div className="row small"><span>Pago</span><span>{metodoPago}</span></div>
+            {esTarjeta && cuponNum && (
+              <div className="row small"><span>Cupón</span><span>{cuponNum}</span></div>
+            )}
+            {esTarjeta && authNum && (
+              <div className="row small"><span>Autorización</span><span>{authNum}</span></div>
+            )}
+            {esTransfer && transBanco && (
+              <div className="row small"><span>Banco/Billetera</span><span>{transBanco}</span></div>
+            )}
+            {esTransfer && transNroOp && (
+              <div className="row small"><span>N° Operación</span><span>{transNroOp}</span></div>
+            )}
             <div className="line" />
 
             {/* Detalle de productos */}
@@ -169,10 +147,10 @@ export default function TicketTermico({ venta, onClose }) {
           </div>
         </div>
 
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-slate-600 flex justify-end gap-2">
+        <div className="px-4 py-3 border-t border-slate-200 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 dark:bg-slate-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500"
+            className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300"
           >
             Cancelar
           </button>

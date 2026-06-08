@@ -41,16 +41,32 @@ export const descargarBackup = async (backupId) => {
   const response = await api.get(`${BASE_URL}/backups/${backupId}/descargar/`, {
     responseType: 'blob'
   });
-  
-  // Crear link de descarga
   const url = window.URL.createObjectURL(new Blob([response.data]));
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', `backup_${backupId}.sql`);
+  link.setAttribute('download', `backup_${backupId}.zip`);
   document.body.appendChild(link);
   link.click();
   link.remove();
-  
+  return response.data;
+};
+
+export const descargarBackupPorNombre = async (filename) => {
+  const response = await api.get(`${BASE_URL}/backups/descargar_archivo/`, {
+    params: { filename },
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+export const crearBackupPreActualizacion = async () => {
+  const response = await api.post(`${BASE_URL}/backups/pre_actualizacion/`);
   return response.data;
 };
 

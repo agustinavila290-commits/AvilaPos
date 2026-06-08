@@ -41,6 +41,16 @@ export const cerrarTicket = async (ticketId, metodoPago) => {
   return response.data;
 };
 
+export const registrarPago = async (ticketId, data) => {
+  const response = await api.post(`${BASE_URL}/tickets/${ticketId}/registrar_pago/`, data);
+  return response.data;
+};
+
+export const getSaldoCliente = async (clienteId) => {
+  const response = await api.get(`${BASE_URL}/tickets/saldo_cliente/`, { params: { cliente_id: clienteId } });
+  return response.data;
+};
+
 export default {
   getTickets,
   getTicket,
@@ -48,4 +58,6 @@ export default {
   agregarItem,
   devolverItem,
   cerrarTicket,
+  registrarPago,
+  getSaldoCliente,
 };

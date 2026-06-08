@@ -88,29 +88,32 @@ class Stock(models.Model):
     def __str__(self):
         return f"{self.variante.nombre_completo} - {self.deposito.nombre}: {self.cantidad}"
     
+    def _umbral_critico(self):
+        """Retorna el umbral crítico: por producto si está definido, sino global."""
+        try:
+            minimo = self.variante.stock_minimo
+            if minimo and minimo > 0:
+                return minimo
+        except Exception:
+            pass
+        from apps.configuracion.models import ConfiguracionManager
+        try:
+            return int(ConfiguracionManager.obtener('UMBRAL_STOCK_CRITICO', 2))
+        except (TypeError, ValueError):
+            return 2
+
     @property
     def es_critico(self):
-        """Retorna True si el stock es crítico (≤ umbral configurado)."""
-        from apps.configuracion.models import ConfiguracionManager
-        umbral = ConfiguracionManager.obtener('UMBRAL_STOCK_CRITICO', 2)
-        try:
-            umbral = int(umbral)
-        except (TypeError, ValueError):
-            umbral = 2
-        return self.cantidad <= umbral
+        """Retorna True si el stock es crítico (≤ umbral por producto o global)."""
+        return self.cantidad <= self._umbral_critico()
 
     @property
     def estado(self):
         """Retorna el estado del stock: SIN_STOCK, CRITICO, BAJO, NORMAL."""
+        umbral_critico = self._umbral_critico()
         from apps.configuracion.models import ConfiguracionManager
-        umbral_critico = ConfiguracionManager.obtener('UMBRAL_STOCK_CRITICO', 2)
-        umbral_bajo = ConfiguracionManager.obtener('UMBRAL_STOCK_BAJO', 5)
         try:
-            umbral_critico = int(umbral_critico)
-        except (TypeError, ValueError):
-            umbral_critico = 2
-        try:
-            umbral_bajo = int(umbral_bajo)
+            umbral_bajo = int(ConfiguracionManager.obtener('UMBRAL_STOCK_BAJO', 5))
         except (TypeError, ValueError):
             umbral_bajo = 5
         if self.cantidad <= 0:
@@ -217,3 +220,77 @@ class MovimientoStock(models.Model):
     def __str__(self):
         signo = '+' if self.cantidad >= 0 else ''
         return f"{self.tipo} - {self.variante.sku}: {signo}{self.cantidad} ({self.fecha.strftime('%Y-%m-%d %H:%M')})"
+
+
+class ConteoInventario(models.Model):
+    """Sesión de conteo físico de inventario."""
+
+    class Estado(models.TextChoices):
+        ABIERTO = 'ABIERTO', 'Abierto'
+        FINALIZADO = 'FINALIZADO', 'Finalizado'
+        CANCELADO = 'CANCELADO', 'Cancelado'
+
+    deposito = models.ForeignKey(
+        Deposito,
+        on_delete=models.PROTECT,
+        related_name='conteos',
+        verbose_name='Depósito'
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='conteos_inventario',
+        verbose_name='Usuario'
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.ABIERTO,
+        verbose_name='Estado'
+    )
+    observaciones = models.TextField(blank=True, null=True, verbose_name='Observaciones')
+    fecha_inicio = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de inicio')
+    fecha_cierre = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de cierre')
+
+    class Meta:
+        verbose_name = 'Conteo de Inventario'
+        verbose_name_plural = 'Conteos de Inventario'
+        ordering = ['-fecha_inicio']
+
+    def __str__(self):
+        return f"Conteo #{self.id} — {self.deposito.nombre} ({self.get_estado_display()})"
+
+
+class DetalleConteo(models.Model):
+    """Ítem dentro de un conteo físico de inventario."""
+
+    conteo = models.ForeignKey(
+        ConteoInventario,
+        on_delete=models.CASCADE,
+        related_name='detalles',
+        verbose_name='Conteo'
+    )
+    variante = models.ForeignKey(
+        VarianteProducto,
+        on_delete=models.PROTECT,
+        related_name='detalles_conteo',
+        verbose_name='Variante'
+    )
+    cantidad_sistema = models.IntegerField(verbose_name='Cantidad en sistema')
+    cantidad_contada = models.IntegerField(null=True, blank=True, verbose_name='Cantidad contada')
+    ajustado = models.BooleanField(default=False, verbose_name='Ajustado')
+
+    class Meta:
+        verbose_name = 'Detalle de Conteo'
+        verbose_name_plural = 'Detalles de Conteo'
+        unique_together = [['conteo', 'variante']]
+        ordering = ['variante__producto_base__nombre', 'variante__nombre_variante']
+
+    @property
+    def diferencia(self):
+        if self.cantidad_contada is None:
+            return None
+        return self.cantidad_contada - self.cantidad_sistema
+
+    def __str__(self):
+        return f"{self.variante.codigo}: sistema={self.cantidad_sistema}, contado={self.cantidad_contada}"

@@ -13,6 +13,11 @@ export default function ClienteForm() {
     telefono: '',
     email: '',
     direccion: '',
+    tipo_cliente: 'MINORISTA',
+    whatsapp: '',
+    limite_credito: '',
+    descuento_habitual: '',
+    notas: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -34,6 +39,11 @@ export default function ClienteForm() {
         telefono: data.telefono,
         email: data.email || '',
         direccion: data.direccion || '',
+        tipo_cliente: data.tipo_cliente || 'MINORISTA',
+        whatsapp: data.whatsapp || '',
+        limite_credito: data.limite_credito ?? '',
+        descuento_habitual: data.descuento_habitual ?? '',
+        notas: data.notas || '',
       });
     } catch (error) {
       console.error('Error al cargar cliente:', error);
@@ -238,6 +248,53 @@ export default function ClienteForm() {
             {errors.direccion && (
               <p className="mt-1 text-sm text-red-600">{errors.direccion}</p>
             )}
+          </div>
+
+          {/* Separador campos extendidos */}
+          <div className="border-t border-slate-200 pt-4 mt-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Información adicional</p>
+          </div>
+
+          {/* Tipo de cliente */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de cliente</label>
+            <select name="tipo_cliente" value={formData.tipo_cliente} onChange={handleChange}
+              className="input-field">
+              <option value="MINORISTA">Minorista</option>
+              <option value="MAYORISTA">Mayorista</option>
+              <option value="MECANICO">Mecánico / Taller</option>
+              <option value="REVENDEDOR">Revendedor</option>
+            </select>
+          </div>
+
+          {/* WhatsApp */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              WhatsApp <span className="text-slate-400 font-normal">(sin espacios ni guiones)</span>
+            </label>
+            <input type="text" name="whatsapp" value={formData.whatsapp} onChange={handleChange}
+              className="input-field" placeholder="Ej: 3834625390" />
+          </div>
+
+          {/* Límite de crédito y descuento habitual */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Límite de crédito $</label>
+              <input type="number" name="limite_credito" value={formData.limite_credito} onChange={handleChange}
+                min={0} step={0.01} className="input-field" placeholder="0 = sin límite" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Descuento habitual %</label>
+              <input type="number" name="descuento_habitual" value={formData.descuento_habitual} onChange={handleChange}
+                min={0} max={100} step={0.5} className="input-field" placeholder="0" />
+            </div>
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notas internas</label>
+            <textarea name="notas" value={formData.notas} onChange={handleChange}
+              rows={3} className="input-field" placeholder="Observaciones internas sobre el cliente..." />
           </div>
 
           {/* Botones */}

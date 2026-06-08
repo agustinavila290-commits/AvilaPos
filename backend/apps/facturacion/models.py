@@ -223,7 +223,16 @@ class Factura(models.Model):
         blank=True,
         verbose_name='Observaciones'
     )
-    
+
+    # PDF generado localmente
+    pdf_archivo = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        verbose_name='Archivo PDF',
+        help_text='Ruta relativa en MEDIA_ROOT, ej: facturas/factura_venta_000123_B_0001_00000001.pdf'
+    )
+
     # Timestamps
     fecha_creacion = models.DateTimeField(
         auto_now_add=True,

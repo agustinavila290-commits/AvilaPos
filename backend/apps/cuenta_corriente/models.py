@@ -90,18 +90,15 @@ class TicketCuentaCorriente(models.Model):
     )
 
     subtotal = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('0'),
-        validators=[MinValueValidator(0)],
-        verbose_name='Subtotal'
+        max_digits=10, decimal_places=2, default=Decimal('0'),
+        validators=[MinValueValidator(0)], verbose_name='Subtotal'
     )
     total = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal('0'),
-        validators=[MinValueValidator(0)],
-        verbose_name='Total'
+        max_digits=10, decimal_places=2, default=Decimal('0'),
+        validators=[MinValueValidator(0)], verbose_name='Total'
+    )
+    fecha_vencimiento = models.DateField(
+        null=True, blank=True, verbose_name='Fecha de vencimiento'
     )
 
     class Meta:
@@ -122,6 +119,20 @@ class TicketCuentaCorriente(models.Model):
             ultimo = TicketCuentaCorriente.objects.order_by('-numero').first()
             self.numero = (ultimo.numero + 1) if ultimo else 1
         super().save(*args, **kwargs)
+
+    @property
+    def saldo_pendiente(self):
+        """Total menos pagos parciales recibidos."""
+        from django.db.models import Sum
+        pagado = self.pagos.aggregate(s=Sum('monto'))['s'] or Decimal('0')
+        return max(Decimal('0'), self.total - pagado)
+
+    @property
+    def esta_vencido(self):
+        if self.fecha_vencimiento and self.estado == self.Estado.A_SALDAR:
+            from django.utils import timezone
+            return self.fecha_vencimiento < timezone.now().date()
+        return False
 
     def recalcular_totales(self):
         """Recalcula subtotal y total desde los detalles (consulta DB para evitar cache obsoleto)."""
@@ -192,3 +203,44 @@ class DetalleTicketCC(models.Model):
     @property
     def precio_final_unitario(self):
         return self.precio_unitario - self.descuento_unitario
+
+
+class PagoTicketCC(models.Model):
+    """Pago parcial o total aplicado a un ticket de cuenta corriente."""
+
+    class MetodoPago(models.TextChoices):
+        EFECTIVO       = 'EFECTIVO',       'Efectivo'
+        TRANSFERENCIA  = 'TRANSFERENCIA',  'Transferencia'
+        TARJETA        = 'TARJETA',        'Tarjeta'
+
+    ticket = models.ForeignKey(
+        TicketCuentaCorriente,
+        on_delete=models.CASCADE,
+        related_name='pagos',
+        verbose_name='Ticket'
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='pagos_cc',
+        verbose_name='Registrado por'
+    )
+    fecha = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
+    monto = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name='Monto'
+    )
+    metodo_pago = models.CharField(
+        max_length=20, choices=MetodoPago.choices,
+        default=MetodoPago.EFECTIVO, verbose_name='Método'
+    )
+    observacion = models.TextField(blank=True, default='', verbose_name='Observación')
+
+    class Meta:
+        verbose_name = 'Pago ticket CC'
+        verbose_name_plural = 'Pagos ticket CC'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"Pago ${self.monto} en Ticket #{self.ticket.numero}"

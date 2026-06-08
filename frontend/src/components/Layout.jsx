@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 
 export default function Layout({ children }) {
   const { user, logout, isAdmin } = useAuth();
-  const { darkMode, toggleDarkMode } = useTheme();
+  useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,25 +15,55 @@ export default function Layout({ children }) {
     navigate('/login');
   };
 
+  const IconPOS = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
+  const IconVentas = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+  const IconProductos = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>;
+  const IconClientes = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+  const IconInventario = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+  const IconAnalisis = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+  const IconOrdenes = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>;
+  const IconDevoluciones = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>;
+  const IconCuentaCorriente = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>;
+  const IconCompras = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>;
+  const IconTransferencias = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>;
+  const IconPresupuestos = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+  const IconReportes = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>;
+  const IconBackups = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>;
+  const IconConfig = () => <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+
   // Menú de navegación
   const menuItems = [
-    { path: '/', label: 'Punto de venta', icon: '🛒', admin: false },
-    { path: '/ventas', label: 'Ventas', icon: '💰', admin: false },
-    { path: '/productos', label: 'Productos', icon: '📦', admin: false },
-    { path: '/clientes', label: 'Clientes', icon: '👥', admin: false },
-    { path: '/inventario', label: 'Inventario', icon: '📊', admin: false },
-    { path: '/devoluciones', label: 'Devoluciones', icon: '↩️', admin: false },
-    { path: '/cuenta-corriente', label: 'Cuenta Corriente', icon: '📋', admin: false },
-    { path: '/compras', label: 'Compras', icon: '🛍️', admin: true },
-    { path: '/reportes', label: 'Reportes', icon: '📈', admin: true },
+    { path: '/', label: 'Punto de venta', icon: <IconPOS />, admin: false },
+    { path: '/ventas', label: 'Ventas', icon: <IconVentas />, admin: false },
+    { path: '/productos', label: 'Productos', icon: <IconProductos />, admin: false },
+    { path: '/clientes', label: 'Clientes', icon: <IconClientes />, admin: false },
+    { path: '/inventario', label: 'Inventario', icon: <IconInventario />, admin: false },
+    { path: '/devoluciones', label: 'Devoluciones', icon: <IconDevoluciones />, admin: false },
+    { path: '/presupuestos', label: 'Presupuestos', icon: <IconPresupuestos />, admin: false },
+    { path: '/cuenta-corriente', label: 'Cuenta Corriente', icon: <IconCuentaCorriente />, admin: false },
+    { path: '/compras', label: 'Compras', icon: <IconCompras />, admin: true },
+    { path: '/compras/ordenes', label: 'Órdenes OC', icon: <IconOrdenes />, admin: true },
+    { path: '/transferencias', label: 'Transferencias', icon: <IconTransferencias />, admin: true },
+    { path: '/inventario/avanzado', label: 'Inv. Avanzado', icon: <IconAnalisis />, admin: true },
+    { path: '/reportes', label: 'Reportes', icon: <IconReportes />, admin: true },
   ];
 
   const adminTools = [
-    { path: '/backups', label: 'Backups', icon: '💾' },
-    { path: '/configuracion', label: 'Configuración', icon: '⚙️' },
+    { path: '/backups', label: 'Backups', icon: <IconBackups /> },
+    { path: '/configuracion', label: 'Configuración', icon: <IconConfig /> },
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === '/inventario/avanzado') {
+      return location.pathname.startsWith('/inventario/avanzado') ||
+        location.pathname.startsWith('/inventario/conteo') ||
+        location.pathname.startsWith('/inventario/ajuste-masivo')
+    }
+    if (path === '/compras/ordenes') {
+      return location.pathname.startsWith('/compras/ordenes')
+    }
+    return location.pathname === path
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,41 +75,46 @@ export default function Layout({ children }) {
         ></div>
       )}
 
-      {/* Sidebar - Responsive MUY COMPACTO con Dark Mode */}
+      {/* Sidebar - Responsive MUY COMPACTO */}
       <aside className={`
         fixed inset-y-0 left-0 z-50
-        w-52 sm:w-56 lg:w-60 bg-white dark:bg-slate-800 shadow-xl border-r border-gray-100 dark:border-slate-700 flex flex-col
+        w-52 sm:w-56 lg:w-60 bg-white shadow-xl border-r border-slate-100 flex flex-col
         transform transition-all duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+        <div className="px-4 py-3 flex justify-between items-center" style={{ backgroundColor: '#1E3A8A' }}>
           <div>
-            <h1 className="text-sm sm:text-base lg:text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+            <h1 className="text-sm sm:text-base font-bold text-white tracking-wide">
               Casa de Repuestos
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Sistema de gestión</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>Sistema de gestión</p>
           </div>
           {/* Botón cerrar en móvil */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-500 hover:text-gray-700"
+            className="lg:hidden text-white/70 hover:text-white"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Usuario */}
-        <div className="px-3 sm:px-4 py-3 sm:py-4 border-b border-gray-100 dark:border-slate-700">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg sm:rounded-xl p-2.5 sm:p-3 shadow-sm">
-            <p className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
-              {user?.first_name} {user?.last_name}
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-              {user?.es_administrador ? 'Admin' : 'Cajero'}
-            </p>
+        <div className="px-3 py-3 border-b border-brand-border">
+          <div className="flex items-center gap-2.5 bg-white rounded-lg p-2.5 border-l-4 border-brand-blue shadow-sm">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#2563EB' }}>
+              {(user?.first_name?.[0] || user?.username?.[0] || '?').toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-brand-text truncate">
+                {user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.username}
+              </p>
+              <p className="text-xs font-medium" style={{ color: '#2563EB' }}>
+                {user?.es_administrador ? 'Administrador' : 'Cajero'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -92,14 +127,11 @@ export default function Layout({ children }) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={
-                    isActive(item.path)
-                      ? 'sidebar-item-active'
-                      : 'sidebar-item'
-                  }
+                  onClick={() => setSidebarOpen(false)}
+                  className={isActive(item.path) ? 'sidebar-item-active' : 'sidebar-item'}
                 >
-                  <span className="text-base sm:text-lg">{item.icon}</span>
-                  <span className="text-xs sm:text-sm font-medium">{item.label}</span>
+                  {item.icon}
+                  <span className="text-xs sm:text-sm">{item.label}</span>
                 </Link>
               ))}
           </div>
@@ -107,8 +139,8 @@ export default function Layout({ children }) {
           {/* Herramientas admin */}
           {isAdmin() && (
             <>
-              <div className="my-3 sm:my-4 border-t border-gray-200 dark:border-slate-700"></div>
-              <p className="px-3 sm:px-4 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
+              <div className="my-3 sm:my-4 border-t border-slate-200"></div>
+              <p className="px-3 sm:px-4 text-xs font-semibold text-slate-400 uppercase mb-2">
                 Herramientas
               </p>
               <div className="space-y-1">
@@ -116,14 +148,11 @@ export default function Layout({ children }) {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={
-                      isActive(item.path)
-                        ? 'sidebar-item-active'
-                        : 'sidebar-item'
-                    }
+                    onClick={() => setSidebarOpen(false)}
+                    className={isActive(item.path) ? 'sidebar-item-active' : 'sidebar-item'}
                   >
-                    <span className="text-base sm:text-lg">{item.icon}</span>
-                    <span className="text-xs sm:text-sm font-medium">{item.label}</span>
+                    {item.icon}
+                    <span className="text-xs sm:text-sm">{item.label}</span>
                   </Link>
                 ))}
               </div>
@@ -131,39 +160,15 @@ export default function Layout({ children }) {
           )}
         </nav>
 
-        {/* Dark Mode Toggle */}
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-gray-100 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 shadow-sm"
-          >
-            {darkMode ? (
-              <>
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                <span className="hidden sm:inline">Modo Claro</span>
-                <span className="sm:hidden">Claro</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-                <span className="hidden sm:inline">Modo Oscuro</span>
-                <span className="sm:hidden">Oscuro</span>
-              </>
-            )}
-          </button>
-        </div>
-
         {/* Logout */}
-        <div className="p-3 sm:p-4 border-t border-gray-100 dark:border-slate-700">
+        <div className="p-3 border-t border-brand-border">
           <button
             onClick={handleLogout}
-            className="w-full bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium shadow-lg shadow-red-500/30 dark:shadow-red-600/40 hover:shadow-xl hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all duration-200"
+            className="w-full flex items-center justify-center gap-2 bg-brand-red text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold hover:brightness-110 hover:-translate-y-0.5 transition-all duration-150 shadow-sm"
           >
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
             Cerrar Sesión
           </button>
         </div>
@@ -172,16 +177,16 @@ export default function Layout({ children }) {
       {/* Contenido principal - Responsive MUY COMPACTO - SIEMPRE CON MARGIN */}
       <div className="ml-0 lg:ml-60">
         {/* Header móvil */}
-        <div className="lg:hidden bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-2 py-2 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+        <div className="lg:hidden bg-white border-b border-slate-200 px-2 py-2 flex items-center justify-between sticky top-0 z-30 shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white p-1"
+            className="text-slate-700 hover:text-slate-900 p-1"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h2 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100">Casa de Repuestos</h2>
+          <h2 className="text-xs sm:text-sm font-bold text-slate-800">Casa de Repuestos</h2>
           <div className="w-5"></div>
         </div>
 

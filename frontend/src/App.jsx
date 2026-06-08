@@ -31,6 +31,16 @@ import NuevoTicketCC from './pages/NuevoTicketCC'
 import TicketDetalle from './pages/TicketDetalle'
 import Backups from './pages/Backups'
 import AuditLogs from './pages/AuditLogs'
+import Transferencias from './pages/Transferencias'
+import Presupuestos from './pages/Presupuestos'
+import NuevoPresupuesto from './pages/NuevoPresupuesto'
+import PresupuestoDetalle from './pages/PresupuestoDetalle'
+import InventarioAvanzado from './pages/InventarioAvanzado'
+import ConteoStock from './pages/ConteoStock'
+import AjusteMasivo from './pages/AjusteMasivo'
+import OrdenesCompra from './pages/OrdenesCompra'
+import NuevaOrdenCompra from './pages/NuevaOrdenCompra'
+import OrdenCompraDetalle from './pages/OrdenCompraDetalle'
 
 const routerFuture = {
   v7_startTransition: true,
@@ -187,6 +197,50 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/inventario/avanzado"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <InventarioAvanzado />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventario/conteo"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <ConteoStock />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventario/conteo/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <ConteoStock />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventario/ajuste-masivo"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <AjusteMasivo />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
           
           {/* Rutas de Compras */}
           <Route
@@ -210,6 +264,10 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/compras/ordenes" element={<ProtectedRoute requireAdmin><Layout><OrdenesCompra /></Layout></ProtectedRoute>} />
+          <Route path="/compras/ordenes/nueva" element={<ProtectedRoute requireAdmin><Layout><NuevaOrdenCompra /></Layout></ProtectedRoute>} />
+          <Route path="/compras/ordenes/:id" element={<ProtectedRoute requireAdmin><Layout><OrdenCompraDetalle /></Layout></ProtectedRoute>} />
           
           <Route
             path="/compras/:id"
@@ -353,6 +411,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/transferencias"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <Transferencias />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Presupuestos */}
+          <Route path="/presupuestos" element={<ProtectedRoute><Layout><Presupuestos /></Layout></ProtectedRoute>} />
+          <Route path="/presupuestos/nuevo" element={<ProtectedRoute><Layout><NuevoPresupuesto /></Layout></ProtectedRoute>} />
+          <Route path="/presupuestos/:id" element={<ProtectedRoute><Layout><PresupuestoDetalle /></Layout></ProtectedRoute>} />
           
           {/* Ruta por defecto */}
           <Route path="*" element={<Navigate to="/" replace />} />

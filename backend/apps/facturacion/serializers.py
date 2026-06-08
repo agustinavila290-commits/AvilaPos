@@ -38,7 +38,7 @@ class FacturaSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'numero', 'fecha_emision', 'fecha_creacion', 'fecha_modificacion',
             'cae', 'cae_vencimiento', 'fecha_proceso_afip', 'resultado_afip',
-            'observaciones_afip', 'qr_data', 'numero_completo'
+            'observaciones_afip', 'qr_data', 'numero_completo', 'pdf_archivo'
         ]
 
 

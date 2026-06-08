@@ -20,6 +20,16 @@ export default {
           800: '#075985',
           900: '#0c4a6e',
         },
+        brand: {
+          blue:       '#2563EB',
+          'blue-dark':'#1E3A8A',
+          green:      '#16A34A',
+          red:        '#DC2626',
+          bg:         '#F3F4F6',
+          border:     '#E5E7EB',
+          text:       '#111827',
+          muted:      '#6B7280',
+        },
       },
       animation: {
         'slide-in-up': 'slideInUp 0.4s ease-out',

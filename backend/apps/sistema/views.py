@@ -122,13 +122,51 @@ class BackupViewSet(viewsets.ReadOnlyModelViewSet):
                 'mensaje': mensaje
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    @action(detail=False, methods=['post'])
+    def pre_actualizacion(self, request):
+        """Crea un backup etiquetado como 'pre_actualizacion' antes de una actualización del sistema."""
+        success, mensaje, backup_log = self.backup_manager.crear_backup(
+            usuario=request.user,
+            etiqueta='pre_actualizacion',
+        )
+        if success:
+            return Response({'success': True, 'mensaje': mensaje, 'backup': BackupLogSerializer(backup_log).data},
+                            status=status.HTTP_201_CREATED)
+        return Response({'success': False, 'mensaje': mensaje}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'])
     def estadisticas(self, request):
         """Obtener estadísticas de backups"""
         stats = self.backup_manager.estadisticas()
         serializer = EstadisticasBackupSerializer(stats)
-        
+
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def descargar_archivo(self, request):
+        """Descarga un backup por nombre de archivo (sin requerir el ID del log)."""
+        from pathlib import Path as _Path
+        filename = request.query_params.get('filename')
+        if not filename:
+            return Response({'error': 'filename es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        filename = _Path(filename).name  # sanitizar path traversal
+        filepath = self.backup_manager.backup_dir / filename
+
+        if not filepath.exists():
+            return Response({'error': 'Archivo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            response = FileResponse(
+                open(str(filepath), 'rb'),
+                as_attachment=True,
+                filename=filename,
+                content_type='application/zip',
+            )
+            response['Content-Length'] = filepath.stat().st_size
+            return response
+        except OSError as e:
+            return Response({'error': f'No se pudo abrir el archivo: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['get'])
     def descargar(self, request, pk=None):

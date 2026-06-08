@@ -1,37 +1,24 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useEffect, useMemo, useContext } from 'react';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [darkMode, setDarkMode] = useState(() => {
-    // Verificar localStorage primero
-    const saved = localStorage.getItem('darkMode');
-    if (saved !== null) {
-      return JSON.parse(saved);
-    }
-    // Por defecto usar preferencia del sistema
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const darkMode = false;
 
   useEffect(() => {
-    // Guardar en localStorage
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-    
-    // Aplicar/remover clase 'dark' al HTML
     const root = document.documentElement;
-    if (darkMode) {
-      root.classList.add('dark');
-      root.style.colorScheme = 'dark';
-    } else {
-      root.classList.remove('dark');
-      root.style.colorScheme = 'light';
-    }
-  }, [darkMode]);
+    root.classList.remove('dark');
+    root.style.colorScheme = 'light';
+    localStorage.setItem('darkMode', JSON.stringify(false));
+  }, []);
 
-  const toggleDarkMode = () => setDarkMode(prev => !prev);
+  const contextValue = useMemo(() => ({
+    darkMode: false,
+    toggleDarkMode: () => {}
+  }), []);
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

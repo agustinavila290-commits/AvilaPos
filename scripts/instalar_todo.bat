@@ -1,147 +1,218 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableDelayedExpansion
-title Casa de Repuestos - Instalador automático
+title AvilaPOS - Instalador
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set ROOT=%CD%
 
 echo.
-echo ============================================
-echo   CASA DE REPUESTOS - Instalación automática
-echo ============================================
+echo ================================================================
+echo   AVILAPOS - INSTALACION AUTOMATICA
+echo   Avila Moto Repuestos y Accesorios
+echo ================================================================
+echo.
+echo   Carpeta del proyecto: %ROOT%
 echo.
 
-:: ----- 1. Python (probar py -3 primero, luego python) -----
+:: ================================================================
+:: PASO 1 - Verificar Python
+:: ================================================================
+echo [1/7] Verificando Python...
+
 set PY_CMD=
-where py >nul 2>&1 && set PY_CMD=py -3
-if "%PY_CMD%"=="" where python >nul 2>&1 && set PY_CMD=python
-if "%PY_CMD%"=="" (
-    echo [X] Python no encontrado en el PATH.
+where py    >nul 2>&1 && py -3 --version >nul 2>&1 && set PY_CMD=py -3
+if "!PY_CMD!"=="" where python >nul 2>&1 && set PY_CMD=python
+if "!PY_CMD!"=="" where python3 >nul 2>&1 && set PY_CMD=python3
+
+if "!PY_CMD!"=="" (
     echo.
-    echo     Intentando instalar con winget...
-    winget install Python.Python.3.11 --accept-package-agreements --accept-source-agreements 2>nul
-    if errorlevel 1 (
-        echo     winget no disponible o fallo.
-        echo.
-        echo     Instala Python manualmente:
-        echo       https://www.python.org/downloads/
-        echo     Marca "Add Python to PATH" y reinicia la PC o esta ventana.
-        echo     Luego vuelve a ejecutar instalar_todo.bat
-    ) else (
-        echo     Python instalado. Cierra esta ventana, abre una nueva y ejecuta de nuevo instalar_todo.bat
-    )
+    echo  [X] Python no encontrado.
+    echo.
+    echo  Descargalo e instalalo desde:
+    echo      https://www.python.org/downloads/
+    echo.
+    echo  IMPORTANTE al instalar:
+    echo    - Marca la opcion "Add Python to PATH"
+    echo    - Reinicia esta ventana despues de instalar
+    echo    - Vuelve a ejecutar este script
     echo.
     pause
     exit /b 1
 )
-echo [OK] Python:
-%PY_CMD% --version
+
+for /f "tokens=*" %%v in ('!PY_CMD! --version 2^>^&1') do set PY_VER=%%v
+echo  [OK] !PY_VER!
 echo.
 
-:: ----- 2. Entorno virtual backend -----
-if not exist "backend\venv" (
-    echo [*] Creando entorno virtual (backend\venv)...
-    %PY_CMD% -m venv backend\venv
+:: ================================================================
+:: PASO 2 - Crear entorno virtual
+:: ================================================================
+echo [2/7] Configurando entorno virtual Python...
+
+if not exist "%ROOT%\backend\venv\Scripts\python.exe" (
+    echo  Creando entorno virtual...
+    !PY_CMD! -m venv "%ROOT%\backend\venv"
     if errorlevel 1 (
-        echo [X] Error al crear venv.
+        echo  [X] No se pudo crear el entorno virtual.
+        echo  Intentalo manualmente: python -m venv backend\venv
         pause
         exit /b 1
     )
-    echo [OK] Listo.
+    echo  [OK] Entorno virtual creado.
 ) else (
-    echo [OK] Entorno virtual ya existe.
+    echo  [OK] Entorno virtual ya existe.
 )
 echo.
 
-:: ----- 3. Dependencias Python -----
-echo [*] Instalando dependencias del backend...
-backend\venv\Scripts\python.exe -m pip install --upgrade pip --quiet
-backend\venv\Scripts\pip.exe install -r backend\requirements.txt --quiet
+:: ================================================================
+:: PASO 3 - Instalar dependencias Python
+:: ================================================================
+echo [3/7] Instalando dependencias del backend...
+echo  (esto puede tardar unos minutos la primera vez)
+echo.
+
+"%ROOT%\backend\venv\Scripts\python.exe" -m pip install --upgrade pip --quiet 2>nul
+
+"%ROOT%\backend\venv\Scripts\pip.exe" install -r "%ROOT%\backend\requirements.txt"
 if errorlevel 1 (
-    echo [X] Error. Reintentando mostrando salida:
-    backend\venv\Scripts\pip.exe install -r backend\requirements.txt
+    echo.
+    echo  [X] Error al instalar dependencias Python.
+    echo  Verificar conexion a internet e intentar de nuevo.
     pause
     exit /b 1
 )
-echo [OK] Dependencias Python instaladas.
+echo.
+echo  [OK] Dependencias backend instaladas.
 echo.
 
-:: ----- 4. Node.js -----
+:: Instalar pystray y pillow para el launcher (VBS fallback)
+echo  Instalando dependencias del launcher (pystray, pillow)...
+"%ROOT%\backend\venv\Scripts\pip.exe" install pystray==0.19.5 pillow==11.1.0 --quiet
+echo  [OK] Listo.
+echo.
+
+:: ================================================================
+:: PASO 4 - Verificar Node.js
+:: ================================================================
+echo [4/7] Verificando Node.js...
+
 where node >nul 2>&1
 if errorlevel 1 (
-    echo [X] Node.js no encontrado en el PATH.
     echo.
-    echo     Intentando instalar con winget...
-    winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>nul
-    if errorlevel 1 (
-        echo     winget no disponible o fallo.
-        echo.
-        echo     Instala Node.js manualmente:
-        echo       https://nodejs.org/
-        echo     Luego reinicia esta ventana y ejecuta de nuevo instalar_todo.bat
-    ) else (
-        echo     Node.js instalado. Cierra esta ventana, abre una nueva y ejecuta de nuevo instalar_todo.bat
-    )
+    echo  [X] Node.js no encontrado.
+    echo.
+    echo  Descargalo e instalalo desde:
+    echo      https://nodejs.org/
+    echo  Elegir la version LTS (recomendada).
+    echo.
+    echo  Despues de instalar:
+    echo    - Reinicia esta ventana
+    echo    - Vuelve a ejecutar este script
     echo.
     pause
     exit /b 1
 )
-echo [OK] Node.js: 
-node --version
-npm --version
+
+for /f "tokens=*" %%v in ('node --version 2^>^&1') do set NODE_VER=%%v
+for /f "tokens=*" %%v in ('npm --version 2^>^&1') do set NPM_VER=%%v
+echo  [OK] Node.js !NODE_VER! / npm !NPM_VER!
 echo.
 
-:: ----- 5. Dependencias frontend -----
-echo [*] Instalando dependencias del frontend (npm)...
-cd frontend
+:: ================================================================
+:: PASO 5 - Instalar dependencias frontend
+:: ================================================================
+echo [5/7] Instalando dependencias del frontend...
+echo  (esto puede tardar varios minutos la primera vez)
+echo.
+
+cd /d "%ROOT%\frontend"
 call npm install
 if errorlevel 1 (
-    echo [X] Error en npm install
-    cd ..
+    echo.
+    echo  [X] Error en npm install.
+    echo  Verificar conexion a internet e intentar de nuevo.
+    cd /d "%ROOT%"
     pause
     exit /b 1
 )
-cd ..
-echo [OK] Dependencias del frontend instaladas.
+cd /d "%ROOT%"
+echo.
+echo  [OK] Dependencias frontend instaladas.
 echo.
 
-:: ----- 6. Migraciones Django (desde backend) -----
-echo [*] Aplicando migraciones (base de datos SQLite)...
+:: ================================================================
+:: PASO 6 - Base de datos
+:: ================================================================
+echo [6/7] Configurando base de datos...
+
 set USE_SQLITE=True
-cd backend
+cd /d "%ROOT%\backend"
+
 venv\Scripts\python.exe manage.py migrate --noinput
 if errorlevel 1 (
-    echo [X] Error en migrate
-    cd ..
+    echo.
+    echo  [X] Error al configurar la base de datos.
+    cd /d "%ROOT%"
     pause
     exit /b 1
 )
-cd ..
-echo [OK] Base de datos lista.
+echo  [OK] Base de datos lista.
 echo.
 
-:: ----- 7. Configuración inicial -----
-if exist "backend\crear_configuracion_inicial.py" (
-    echo [*] Configuración inicial del sistema...
-    cd backend
-    venv\Scripts\python.exe crear_configuracion_inicial.py 2>nul
-    cd ..
-    echo [OK] Hecho.
+:: ================================================================
+:: PASO 7 - Crear usuario administrador
+:: ================================================================
+echo [7/7] Verificando usuario administrador...
+
+if exist "verificar_admin.py" (
+    venv\Scripts\python.exe verificar_admin.py
 ) else (
-    echo [*] Para crear usuario administrador luego:
-    echo     cd backend ^&^& venv\Scripts\activate ^&^& python manage.py createsuperuser
+    :: Crear admin directamente si no existe el script
+    venv\Scripts\python.exe -c "
+import django, os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+os.environ['USE_SQLITE'] = 'True'
+django.setup()
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    u = User.objects.create_superuser('admin', 'admin@local.com', 'admin123')
+    u.is_superuser = True
+    u.is_staff = True
+    u.save()
+    print('[OK] Usuario admin creado (contrasena: admin123)')
+else:
+    print('[OK] Usuario admin ya existe')
+"
 )
-echo.
 
-:: ----- Fin -----
-echo ============================================
-echo   INSTALACIÓN COMPLETADA
-echo ============================================
+cd /d "%ROOT%"
+
+:: ================================================================
+:: CREAR CARPETA DE LOGS
+:: ================================================================
+if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
+
+:: ================================================================
+:: FIN
+:: ================================================================
 echo.
-echo Para iniciar el sistema ejecuta:   iniciar_sistema.bat
+echo ================================================================
+echo   INSTALACION COMPLETADA EXITOSAMENTE
+echo ================================================================
 echo.
-echo O manualmente:
-echo   Backend:  cd backend ^&^& venv\Scripts\activate ^&^& python manage.py runserver
-echo   Frontend: cd frontend ^&^& npm run dev
+echo   Credenciales de acceso:
+echo     Usuario:    admin
+echo     Contrasena: admin123
+echo.
+echo   Para iniciar el sistema:
+echo     - Doble clic en "AvilaPOS.exe"
+echo     - O ejecutar "iniciar_sistema.bat"
+echo.
+echo   Se recomienda cambiar la contrasena luego del primer acceso.
+echo.
+echo   Si aparecen iconos en el Escritorio ejecuta:
+echo     scripts\crear_accesos_directos.bat
 echo.
 pause

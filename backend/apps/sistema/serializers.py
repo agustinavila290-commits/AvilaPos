@@ -29,7 +29,8 @@ class BackupInfoSerializer(serializers.Serializer):
     tamanio_mb = serializers.SerializerMethodField()
     fecha = serializers.DateTimeField()
     ruta = serializers.CharField()
-    
+    tipo = serializers.CharField(default='manual')
+
     def get_tamanio_mb(self, obj):
         return round(obj['tamanio'] / (1024 * 1024), 2)
 
@@ -42,9 +43,11 @@ class EstadisticasBackupSerializer(serializers.Serializer):
     ultimo_backup = serializers.DateTimeField(allow_null=True)
     backups_exitosos = serializers.IntegerField()
     backups_fallidos = serializers.IntegerField()
-    
+    ultimo_backup_automatico = serializers.DateTimeField(allow_null=True, required=False)
+    scheduler_activo = serializers.BooleanField(required=False, default=False)
+
     def get_tamanio_total_mb(self, obj):
-        return round(obj['tamanio_total'] / (1024 * 1024), 2)
+        return round(obj.get('tamanio_total', 0) / (1024 * 1024), 2)
 
 
 class AuditLogSerializer(serializers.ModelSerializer):

@@ -15,11 +15,17 @@ export default function Devoluciones() {
     cargarDevoluciones();
   }, [filtros]);
 
+  const normalizarLista = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.results)) return payload.results;
+    return [];
+  };
+
   const cargarDevoluciones = async () => {
     try {
       setLoading(true);
       const data = await getDevoluciones(filtros);
-      setDevoluciones(Array.isArray(data) ? data : []);
+      setDevoluciones(normalizarLista(data));
     } catch (err) {
       console.error('Error al cargar devoluciones:', err);
       setError('Error al cargar las devoluciones');
@@ -156,10 +162,10 @@ export default function Devoluciones() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link
-                          to={`/devoluciones/${devolucion.id}`}
+                          to={`/devoluciones/nueva?venta_id=${devolucion.venta}`}
                           className="text-blue-600 hover:text-blue-800"
                         >
-                          Ver detalle
+                          Devolver
                         </Link>
                       </td>
                     </tr>

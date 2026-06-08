@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Venta, DetalleVenta
 
 
@@ -14,9 +15,29 @@ class DetalleVentaInline(admin.TabularInline):
         'costo_unitario'
     ]
     can_delete = False
-    
+
     def has_add_permission(self, request, obj=None):
         return False
+
+
+_ESTADO_VENTA_COLORS = {
+    'COMPLETADA': ('#dcfce7', '#166534', 'Completada'),
+    'ANULADA':    ('#fee2e2', '#991b1b', 'Anulada'),
+}
+
+_METODO_PAGO_COLORS = {
+    'EFECTIVO':      ('#d1fae5', '#065f46', 'Efectivo'),
+    'TRANSFERENCIA': ('#dbeafe', '#1e40af', 'Transferencia'),
+    'TARJETA':       ('#ede9fe', '#5b21b6', 'Tarjeta'),
+    'CUENTA_CORRIENTE': ('#fef9c3', '#854d0e', 'Cta. Corriente'),
+}
+
+
+def _badge(bg, color, texto):
+    return format_html(
+        '<span style="background:{};color:{};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;white-space:nowrap">{}</span>',
+        bg, color, texto
+    )
 
 
 @admin.register(Venta)
@@ -27,8 +48,8 @@ class VentaAdmin(admin.ModelAdmin):
         'usuario',
         'fecha',
         'total',
-        'metodo_pago',
-        'estado'
+        'badge_metodo_pago',
+        'badge_estado',
     ]
     list_filter = ['estado', 'metodo_pago', 'fecha']
     search_fields = [
@@ -75,12 +96,22 @@ class VentaAdmin(admin.ModelAdmin):
         })
     )
     
+    def badge_estado(self, obj):
+        bg, color, label = _ESTADO_VENTA_COLORS.get(obj.estado, ('#f3f4f6', '#374151', obj.estado))
+        return _badge(bg, color, label)
+    badge_estado.short_description = 'Estado'
+    badge_estado.admin_order_field = 'estado'
+
+    def badge_metodo_pago(self, obj):
+        bg, color, label = _METODO_PAGO_COLORS.get(obj.metodo_pago, ('#f3f4f6', '#374151', obj.metodo_pago))
+        return _badge(bg, color, label)
+    badge_metodo_pago.short_description = 'Método de pago'
+    badge_metodo_pago.admin_order_field = 'metodo_pago'
+
     def has_add_permission(self, request):
-        # Las ventas se crean desde la API
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
-        # No se pueden eliminar ventas
         return False
 
 

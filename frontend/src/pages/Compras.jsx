@@ -183,7 +183,7 @@ export default function Compras() {
                       {compra.cantidad_items}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
-                      ${compra.total?.toFixed(2)}
+                      ${compra.total != null ? Number(compra.total).toFixed(2) : '0.00'}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 sm:px-3 sm:py-1 inline-flex text-xs sm:text-sm font-semibold rounded-lg ${getEstadoColor(compra.estado_display)}`}>

@@ -1,0 +1,45 @@
+# ==============================================================
+# systemd — AvilaPOS (Gunicorn)
+# Copiar a: /etc/systemd/system/avilapos.service
+# Activar:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable avilapos
+#   sudo systemctl start avilapos
+# ==============================================================
+
+[Unit]
+Description=AvilaPOS — Backend Django (Gunicorn)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+
+User=avilapos
+Group=www-data
+WorkingDirectory=/srv/avilapos/backend
+
+# Variables de entorno desde archivo .env del servidor
+EnvironmentFile=/srv/avilapos/backend/.env
+
+# Iniciar Gunicorn
+ExecStart=/srv/avilapos/venv/bin/gunicorn \
+    --workers 3 \
+    --worker-class sync \
+    --bind 127.0.0.1:8000 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --log-level info \
+    --access-logfile /srv/avilapos/backend/logs/gunicorn-access.log \
+    --error-logfile  /srv/avilapos/backend/logs/gunicorn-error.log \
+    backend.wsgi:application
+
+# Reinicio automático ante fallos
+Restart=on-failure
+RestartSec=5s
+
+# Límites de recursos
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

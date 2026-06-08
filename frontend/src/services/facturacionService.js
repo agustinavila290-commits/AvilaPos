@@ -28,10 +28,16 @@ export const listarPuntosVenta = async () => {
   return [];
 };
 
+export const regenerarPdfFactura = async (id) => {
+  const response = await api.post(`${BASE_URL}/facturas/${id}/regenerar_pdf/`);
+  return response.data;
+};
+
 export default {
   crearFactura,
   autorizarFactura,
   generarPdfFactura,
-  listarPuntosVenta
+  regenerarPdfFactura,
+  listarPuntosVenta,
 };
 

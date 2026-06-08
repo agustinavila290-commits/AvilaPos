@@ -1,0 +1,237 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static jazzmin %}
+{% get_jazzmin_ui_tweaks as jazzmin_ui %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block content_title %}{% trans 'Dashboard' %}{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a></li>
+    <li class="breadcrumb-item">{% trans 'Dashboard' %}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+{% with m=dashboard_metrics %}
+
+{% if m %}
+<!-- ===== MÉTRICAS ===== -->
+<div class="row mb-4">
+
+  <div class="col-xl-3 col-md-6 mb-3">
+    <div class="card" style="border-left:4px solid #2563eb;">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;">Ventas hoy</div>
+            <div style="font-size:28px;font-weight:800;color:#1e3a8a;">{{ m.ventas_hoy_count }}</div>
+            <div style="font-size:13px;color:#374151;">$ {{ m.ventas_hoy_monto|floatformat:0 }}</div>
+          </div>
+          <i class="fas fa-cash-register fa-2x" style="color:#dbeafe;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-3">
+    <div class="card" style="border-left:4px solid #16a34a;">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;">Ventas del mes</div>
+            <div style="font-size:28px;font-weight:800;color:#166534;">{{ m.ventas_mes_count }}</div>
+            <div style="font-size:13px;color:#374151;">$ {{ m.ventas_mes_monto|floatformat:0 }}</div>
+          </div>
+          <i class="fas fa-chart-line fa-2x" style="color:#dcfce7;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-3">
+    <div class="card" style="border-left:4px solid {% if m.stock_critico %}#dc2626{% else %}#16a34a{% endif %};">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;">Stock crítico</div>
+            <div style="font-size:28px;font-weight:800;color:{% if m.stock_critico %}#991b1b{% else %}#166534{% endif %};">{{ m.stock_critico }}</div>
+            <div style="font-size:13px;color:#6b7280;">{{ m.stock_agotado }} agotado{{ m.stock_agotado|pluralize }}</div>
+          </div>
+          <i class="fas fa-exclamation-triangle fa-2x" style="color:#fee2e2;"></i>
+        </div>
+        {% if m.stock_critico %}
+        <a href="/admin/inventario/stock/" style="font-size:12px;color:#dc2626;">Ver stocks →</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-3">
+    <div class="card" style="border-left:4px solid {% if m.facturas_rechazadas %}#dc2626{% elif m.facturas_pendientes %}#f59e0b{% else %}#16a34a{% endif %};">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.05em;">Facturas AFIP</div>
+            <div style="font-size:28px;font-weight:800;color:{% if m.facturas_rechazadas %}#991b1b{% elif m.facturas_pendientes %}#92400e{% else %}#166534{% endif %};">
+              {% if m.facturas_rechazadas %}{{ m.facturas_rechazadas }}{% else %}{{ m.facturas_pendientes }}{% endif %}
+            </div>
+            <div style="font-size:13px;color:#6b7280;">
+              {% if m.facturas_rechazadas %}rechazada{{ m.facturas_rechazadas|pluralize }}{% elif m.facturas_pendientes %}pendiente{{ m.facturas_pendientes|pluralize }}{% else %}al día{% endif %}
+            </div>
+          </div>
+          <i class="fas fa-file-invoice-dollar fa-2x" style="color:#ede9fe;"></i>
+        </div>
+        {% if m.facturas_rechazadas or m.facturas_pendientes %}
+        <a href="/admin/facturacion/factura/" style="font-size:12px;color:#2563eb;">Ver facturas →</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== ÚLTIMAS VENTAS ===== -->
+{% if m.ultimas_ventas %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="m-0"><i class="fas fa-receipt mr-2"></i> Últimas ventas</h5>
+        <a href="/admin/ventas/venta/" class="btn btn-sm btn-outline-primary">Ver todas</a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead style="background:#f8fafc;">
+            <tr>
+              <th style="padding:8px 16px;">#</th>
+              <th style="padding:8px 16px;">Cliente</th>
+              <th style="padding:8px 16px;">Cajero</th>
+              <th style="padding:8px 16px;">Fecha</th>
+              <th style="padding:8px 16px;">Método</th>
+              <th style="padding:8px 16px;text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in m.ultimas_ventas %}
+            <tr>
+              <td style="padding:8px 16px;">
+                <a href="/admin/ventas/venta/{{ v.id }}/change/">{{ v.numero }}</a>
+              </td>
+              <td style="padding:8px 16px;">{{ v.cliente__nombre|default:"-" }}</td>
+              <td style="padding:8px 16px;">{{ v.usuario__first_name|default:v.usuario__username }}</td>
+              <td style="padding:8px 16px;color:#6b7280;font-size:13px;">{{ v.fecha|date:"d/m H:i" }}</td>
+              <td style="padding:8px 16px;">
+                <span style="font-size:12px;padding:2px 8px;border-radius:10px;
+                  {% if v.metodo_pago == 'EFECTIVO' %}background:#d1fae5;color:#065f46;
+                  {% elif v.metodo_pago == 'TARJETA' %}background:#ede9fe;color:#5b21b6;
+                  {% else %}background:#dbeafe;color:#1e40af;{% endif %}">
+                  {{ v.metodo_pago|capfirst|lower|capfirst }}
+                </span>
+              </td>
+              <td style="padding:8px 16px;text-align:right;font-weight:600;">$ {{ v.total|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endwith %}
+
+<!-- ===== LISTA DE MÓDULOS (contenido original jazzmin) ===== -->
+{% get_side_menu using="app_list" as dashboard_list %}
+{% if dashboard_list %}
+    {% widthratio dashboard_list|length 2 1 as middle %}
+{% endif %}
+
+<div class="col-lg-9 col-12">
+    <div class="row">
+        <div class="col-md-6 col-sm-12">
+            {% for app in dashboard_list %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="m-0">{{ app.name }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tbody>
+                            {% for model in app.models %}
+                                <tr>
+                                    <td>{% if model.url %}<a href="{{ model.url }}">{{ model.name }}</a>{% else %}{{ model.name }}{% endif %}</td>
+                                    <td>
+                                        <div class="btn-group float-end">
+                                            {% if model.add_url %}<a href="{{ model.add_url }}" class="btn btn-sm {{ jazzmin_ui.button_classes.success }} addlink">{% trans 'Add' %}</a>{% endif %}
+                                            {% if model.url %}
+                                                {% if model.view_only %}
+                                                    <a href="{{ model.url }}" class="btn btn-sm {{ jazzmin_ui.button_classes.info }} viewlink">{% trans 'View' %}</a>
+                                                {% else %}
+                                                    <a href="{{ model.url }}" class="btn btn-sm {{ jazzmin_ui.button_classes.info }} changelink">{% if model.custom %}{% trans 'Go' %}{% else %}{% trans 'Change' %}{% endif %}</a>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if forloop.counter == middle|add:"0" %}
+                </div><div class="col-md-6 col-sm-12">
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="col-lg-3 col-12">
+    <div id="content-related">
+        <div class="module" id="recent-actions-module">
+            <h4 class="mb-3">{% trans 'Recent actions' %}</h4>
+            {% load log %}
+            {% get_admin_log 6 as admin_log for_user user %}
+            {% if not admin_log %}
+                <p>{% trans 'None available' %}</p>
+            {% else %}
+                <div class="timeline">
+                    {% for entry in admin_log %}
+                        <div>
+                            {% if entry.is_change %}<i class="fas fa-edit bg-gray text-xs"></i>
+                            {% elif entry.is_deletion %}<i class="fas fa-trash bg-danger text-xs"></i>
+                            {% elif entry.is_addition %}<i class="fas fa-plus-circle bg-success text-xs"></i>
+                            {% endif %}
+                            <div class="timeline-item">
+                                <span class="time"><i class="fas fa-clock"></i> {% blocktrans with timesince=entry.action_time|timesince %}{{ timesince }} ago{% endblocktrans %}</span>
+                                <h3 class="timeline-header no-border">
+                                    {% if entry.is_deletion or not entry.get_admin_url %}{{ entry.object_repr }}
+                                    {% else %}<a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>{% endif %}
+                                    {% if entry.model %}<span class="mini quiet">{% filter capfirst %}{{ entry.model }}{% endfilter %}</span>{% endif %}
+                                </h3>
+                                {% if not entry.is_deletion %}
+                                <div class="timeline-body">
+                                    {% if entry.is_addition %}{{ entry }}
+                                    {% else %}
+                                    <ul style="list-style:none;padding:0;">
+                                        {% action_message_to_list entry as action_message_list %}
+                                        {% for action_message in action_message_list %}<li>{{ action_message.msg|style_bold_first_word }}</li>{% endfor %}
+                                    </ul>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <div><i class="fa fa-clock bg-gray"></i></div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

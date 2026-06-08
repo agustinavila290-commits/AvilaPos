@@ -21,6 +21,14 @@ import {
   getMargenPorProducto,
   descargarVentasPeriodoExcel,
   descargarProductosMasVendidosExcel,
+  getCajeros,
+  getVentasAnuladas,
+  getDescuentosResumen,
+  getClientesDeuda,
+  getComprasPorProveedor,
+  descargarVentasAnuladasExcel,
+  descargarClientesDeudaExcel,
+  descargarComprasProveedorExcel,
 } from '../services/reportesService';
 import MetricCard from '../components/MetricCard';
 import SoftCard from '../components/SoftCard';
@@ -55,6 +63,23 @@ export default function Reportes() {
   const [ordenMargen, setOrdenMargen] = useState('margen_desc');
   const [reporteMargen, setReporteMargen] = useState(null);
   const [exportandoExcel, setExportandoExcel] = useState(false);
+
+  // Cajeros (filtro compartido)
+  const [cajeros, setCajeros] = useState([]);
+  const [cajeroId, setCajeroId] = useState('');
+
+  // Estado para ventas anuladas
+  const [anuladas, setAnuladas] = useState(null);
+
+  // Estado para descuentos
+  const [descuentos, setDescuentos] = useState(null);
+
+  // Estado para clientes con deuda
+  const [deuda, setDeuda] = useState(null);
+  const [soloVencidos, setSoloVencidos] = useState(false);
+
+  // Estado para compras por proveedor
+  const [comprasProv, setComprasProv] = useState(null);
 
   const cargarReporteVentas = async () => {
     try {
@@ -124,6 +149,48 @@ export default function Reportes() {
     }
   };
 
+  const cargarVentasAnuladas = async () => {
+    if (!fechaDesde || !fechaHasta) return;
+    setLoading(true); setError('');
+    try {
+      const data = await getVentasAnuladas({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta, usuario_id: cajeroId || undefined });
+      setAnuladas(data);
+    } catch { setError('Error al cargar ventas anuladas'); }
+    finally { setLoading(false); }
+  };
+
+  const cargarDescuentos = async () => {
+    if (!fechaDesde || !fechaHasta) return;
+    setLoading(true); setError('');
+    try {
+      const data = await getDescuentosResumen({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta, usuario_id: cajeroId || undefined });
+      setDescuentos(data);
+    } catch { setError('Error al cargar descuentos'); }
+    finally { setLoading(false); }
+  };
+
+  const cargarDeuda = async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await getClientesDeuda({ solo_vencidos: soloVencidos });
+      setDeuda(data);
+    } catch { setError('Error al cargar clientes con deuda'); }
+    finally { setLoading(false); }
+  };
+
+  const cargarComprasProv = async () => {
+    setLoading(true); setError('');
+    try {
+      const data = await getComprasPorProveedor({ fecha_desde: fechaDesde || undefined, fecha_hasta: fechaHasta || undefined });
+      setComprasProv(data);
+    } catch { setError('Error al cargar compras por proveedor'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    getCajeros().then(setCajeros).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'ventas' && !reporteVentas) {
       cargarReporteVentas();
@@ -133,6 +200,14 @@ export default function Reportes() {
       cargarStockCritico();
     } else if (activeTab === 'margenes' && !reporteMargen) {
       cargarReporteMargen();
+    } else if (activeTab === 'anuladas' && !anuladas) {
+      cargarVentasAnuladas();
+    } else if (activeTab === 'descuentos' && !descuentos) {
+      cargarDescuentos();
+    } else if (activeTab === 'deuda' && !deuda) {
+      cargarDeuda();
+    } else if (activeTab === 'compras_prov' && !comprasProv) {
+      cargarComprasProv();
     }
   }, [activeTab]);
 
@@ -155,20 +230,26 @@ export default function Reportes() {
       {/* Tabs - Soft UI */}
       <div className="bg-white rounded-2xl shadow-lg p-3 sm:p-4 md:p-6 border border-gray-100">
         <nav className="flex flex-wrap gap-2">
-          {['ventas', 'productos', 'stock', 'margenes'].map((tab) => (
+          {[
+            { id: 'ventas', label: 'Ventas' },
+            { id: 'anuladas', label: 'Anuladas' },
+            { id: 'descuentos', label: 'Descuentos' },
+            { id: 'productos', label: 'Más Vendidos' },
+            { id: 'stock', label: 'Stock Crítico' },
+            { id: 'margenes', label: 'Márgenes' },
+            { id: 'deuda', label: 'Clientes c/Deuda' },
+            { id: 'compras_prov', label: 'Compras Prov.' },
+          ].map(({ id, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={id}
+              onClick={() => setActiveTab(id)}
               className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 ${
-                activeTab === tab
+                activeTab === id
                   ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              {tab === 'ventas' && 'Ventas por Período'}
-              {tab === 'productos' && 'Productos Más Vendidos'}
-              {tab === 'stock' && 'Stock Crítico'}
-              {tab === 'margenes' && 'Márgenes'}
+              {label}
             </button>
           ))}
         </nav>
@@ -186,7 +267,7 @@ export default function Reportes() {
         <div className="space-y-3 sm:space-y-4 lg:space-y-6">
           {/* Filtros - Soft UI */}
           <SoftCard title="Filtros" icon="📅">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Fecha Desde
@@ -208,6 +289,17 @@ export default function Reportes() {
                   onChange={(e) => setFechaHasta(e.target.value)}
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 text-gray-800 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 shadow-sm"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Cajero</label>
+                <select
+                  value={cajeroId}
+                  onChange={e => setCajeroId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 text-gray-800 rounded-xl focus:ring-2 focus:ring-blue-400 shadow-sm"
+                >
+                  <option value="">Todos</option>
+                  {cajeros.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
               </div>
               <div className="flex items-end gap-2">
                 <button
@@ -645,6 +737,330 @@ export default function Reportes() {
                 </table>
               </div>
             </SoftCard>
+          )}
+        </div>
+      )}
+      {/* ── TAB: VENTAS ANULADAS ──────────────────────────────────── */}
+      {activeTab === 'anuladas' && (
+        <div className="space-y-4">
+          <SoftCard title="Ventas Anuladas" icon="🚫">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Desde</label>
+                <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Hasta</label>
+                <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Cajero</label>
+                <select value={cajeroId} onChange={e => setCajeroId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                  <option value="">Todos</option>
+                  {cajeros.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+              <div className="flex items-end gap-2">
+                <button onClick={cargarVentasAnuladas} disabled={loading}
+                  className="flex-1 bg-gradient-to-br from-red-500 to-red-600 text-white px-4 py-2.5 rounded-xl font-semibold disabled:opacity-50">
+                  {loading ? 'Cargando...' : 'Generar'}
+                </button>
+                {anuladas && (
+                  <button onClick={() => descargarVentasAnuladasExcel({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta })}
+                    className="flex-1 bg-gradient-to-br from-green-500 to-green-600 text-white px-4 py-2.5 rounded-xl font-semibold">
+                    Excel
+                  </button>
+                )}
+              </div>
+            </div>
+          </SoftCard>
+          {anuladas && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MetricCard title="Ventas Anuladas" value={anuladas.resumen?.cantidad || 0} icon="🚫" color="red" />
+                <MetricCard title="Monto Anulado" value={formatCurrency(anuladas.resumen?.total_anulado || 0)} icon="💸" color="red" />
+              </div>
+              <SoftCard title={`Detalle (${anuladas.ventas?.length || 0})`} icon="📋">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['N°', 'Fecha', 'Cliente', 'Total', 'Método', 'Motivo Anulación', 'Cajero', 'Anuló'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(anuladas.ventas || []).map(v => (
+                        <tr key={v.id} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-2 font-bold text-red-600">#{v.numero}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{new Date(v.fecha).toLocaleDateString('es-AR')}</td>
+                          <td className="px-3 py-2">{v.cliente__nombre || 'Cons. Final'}</td>
+                          <td className="px-3 py-2 font-medium">{formatCurrency(v.total)}</td>
+                          <td className="px-3 py-2 text-xs">{v.metodo_pago}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{v.motivo_anulacion || '—'}</td>
+                          <td className="px-3 py-2 text-xs">{`${v.usuario__first_name || ''} ${v.usuario__last_name || ''}`.trim() || '—'}</td>
+                          <td className="px-3 py-2 text-xs">{`${v.usuario_anulacion__first_name || ''} ${v.usuario_anulacion__last_name || ''}`.trim() || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SoftCard>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: DESCUENTOS ──────────────────────────────────────── */}
+      {activeTab === 'descuentos' && (
+        <div className="space-y-4">
+          <SoftCard title="Descuentos Aplicados" icon="🏷️">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Desde</label>
+                <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Hasta</label>
+                <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Cajero</label>
+                <select value={cajeroId} onChange={e => setCajeroId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                  <option value="">Todos</option>
+                  {cajeros.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button onClick={cargarDescuentos} disabled={loading}
+                  className="w-full bg-gradient-to-br from-yellow-500 to-yellow-600 text-white px-4 py-2.5 rounded-xl font-semibold disabled:opacity-50">
+                  {loading ? 'Cargando...' : 'Generar'}
+                </button>
+              </div>
+            </div>
+          </SoftCard>
+          {descuentos && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MetricCard title="Ventas c/Descuento" value={descuentos.resumen?.cantidad_con_descuento || 0} icon="🏷️" color="yellow" />
+                <MetricCard title="Total Descuentos" value={formatCurrency(descuentos.resumen?.total_descuentos || 0)} icon="💸" color="yellow" />
+                <MetricCard title="% Promedio" value={`${parseFloat(descuentos.resumen?.promedio_descuento_pct || 0).toFixed(1)}%`} icon="📉" color="blue" />
+              </div>
+              {descuentos.por_cajero?.length > 0 && (
+                <SoftCard title="Por Cajero" icon="👤">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Cajero', 'Ventas con Desc.', 'Total Descuento'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {descuentos.por_cajero.map((c, i) => (
+                        <tr key={i} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-2 font-medium">{`${c.usuario__first_name || ''} ${c.usuario__last_name || ''}`.trim() || 'Sistema'}</td>
+                          <td className="px-3 py-2 text-center">{c.cantidad}</td>
+                          <td className="px-3 py-2 font-semibold text-yellow-700">{formatCurrency(c.total_descuento)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </SoftCard>
+              )}
+              <SoftCard title={`Ventas con descuento (${descuentos.ventas_con_descuento?.length || 0})`} icon="📋">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['N°', 'Fecha', 'Cliente', 'Total', 'Descuento $', 'Desc. %', 'Cajero'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(descuentos.ventas_con_descuento || []).map(v => (
+                        <tr key={v.id} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-2 font-bold text-blue-600">#{v.numero}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{new Date(v.fecha).toLocaleDateString('es-AR')}</td>
+                          <td className="px-3 py-2">{v.cliente__nombre || 'Cons. Final'}</td>
+                          <td className="px-3 py-2">{formatCurrency(v.total)}</td>
+                          <td className="px-3 py-2 font-semibold text-yellow-700">{formatCurrency(v.descuento_monto)}</td>
+                          <td className="px-3 py-2">{parseFloat(v.descuento_porcentaje || 0).toFixed(1)}%</td>
+                          <td className="px-3 py-2 text-xs">{`${v.usuario__first_name || ''} ${v.usuario__last_name || ''}`.trim() || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SoftCard>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: CLIENTES CON DEUDA ────────────────────────────────── */}
+      {activeTab === 'deuda' && (
+        <div className="space-y-4">
+          <SoftCard title="Clientes con Deuda Pendiente" icon="💳">
+            <div className="flex flex-wrap gap-4 items-end">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={soloVencidos} onChange={e => setSoloVencidos(e.target.checked)}
+                  className="accent-red-500" />
+                Solo vencidos
+              </label>
+              <button onClick={cargarDeuda} disabled={loading}
+                className="bg-gradient-to-br from-red-500 to-red-600 text-white px-5 py-2.5 rounded-xl font-semibold disabled:opacity-50">
+                {loading ? 'Cargando...' : 'Actualizar'}
+              </button>
+              {deuda && (
+                <button onClick={() => descargarClientesDeudaExcel({ solo_vencidos: soloVencidos })}
+                  className="bg-gradient-to-br from-green-500 to-green-600 text-white px-5 py-2.5 rounded-xl font-semibold">
+                  Exportar Excel
+                </button>
+              )}
+            </div>
+          </SoftCard>
+          {deuda && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MetricCard title="Clientes con Deuda" value={deuda.total_clientes_con_deuda || 0} icon="👥" color="red" />
+                <MetricCard title="Deuda Total" value={formatCurrency(deuda.total_deuda || 0)} icon="💰" color="red" />
+              </div>
+              <SoftCard title="Listado de deudores" icon="📋">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Cliente', 'Teléfono', 'Deuda Total', 'Tickets Pend.', 'Tickets Venc.', 'WhatsApp'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(deuda.clientes || []).map((c, i) => (
+                        <tr key={i} className={`border-b hover:bg-gray-50 ${c.tickets_vencidos > 0 ? 'bg-red-50' : ''}`}>
+                          <td className="px-3 py-2 font-medium">{c.nombre}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{c.telefono || '—'}</td>
+                          <td className="px-3 py-2 font-bold text-red-600">{formatCurrency(c.deuda_total)}</td>
+                          <td className="px-3 py-2 text-center">{c.tickets_pendientes}</td>
+                          <td className="px-3 py-2 text-center">
+                            {c.tickets_vencidos > 0
+                              ? <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-semibold">{c.tickets_vencidos}</span>
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-2">
+                            {c.whatsapp && (
+                              <a
+                                href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}?text=Hola%20${encodeURIComponent(c.nombre)}%2C%20te%20contactamos%20por%20una%20deuda%20pendiente%20de%20${encodeURIComponent(formatCurrency(c.deuda_total))}.`}
+                                target="_blank" rel="noreferrer"
+                                className="text-green-600 text-xs underline"
+                              >
+                                Enviar
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SoftCard>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: COMPRAS POR PROVEEDOR ─────────────────────────────── */}
+      {activeTab === 'compras_prov' && (
+        <div className="space-y-4">
+          <SoftCard title="Compras por Proveedor" icon="📦">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Desde</label>
+                <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Hasta</label>
+                <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm" />
+              </div>
+              <div className="flex items-end gap-2">
+                <button onClick={cargarComprasProv} disabled={loading}
+                  className="flex-1 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold disabled:opacity-50">
+                  {loading ? 'Cargando...' : 'Generar'}
+                </button>
+                {comprasProv && (
+                  <button onClick={() => descargarComprasProveedorExcel({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta })}
+                    className="flex-1 bg-gradient-to-br from-green-500 to-green-600 text-white px-4 py-2.5 rounded-xl font-semibold">
+                    Excel
+                  </button>
+                )}
+              </div>
+            </div>
+          </SoftCard>
+          {comprasProv && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MetricCard title="Total Compras" value={comprasProv.resumen?.cantidad_total || 0} icon="📥" color="blue" />
+                <MetricCard title="Monto Total" value={formatCurrency(comprasProv.resumen?.monto_total || 0)} icon="💵" color="blue" />
+              </div>
+              <SoftCard title="Por Proveedor" icon="🏭">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Proveedor', 'N° Compras', 'Monto Total'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(comprasProv.por_proveedor || []).map((p, i) => (
+                        <tr key={i} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-2 font-medium">{p.proveedor__nombre}</td>
+                          <td className="px-3 py-2 text-center">{p.cantidad_compras}</td>
+                          <td className="px-3 py-2 font-bold text-blue-700">{formatCurrency(p.monto_total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SoftCard>
+              <SoftCard title={`Detalle de compras (${comprasProv.detalle?.length || 0})`} icon="📋">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['N°', 'Fecha', 'Proveedor', 'Factura', 'Total', 'Registró'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(comprasProv.detalle || []).map(c => (
+                        <tr key={c.id} className="border-b hover:bg-gray-50">
+                          <td className="px-3 py-2 font-bold text-blue-600">#{c.numero}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{new Date(c.fecha).toLocaleDateString('es-AR')}</td>
+                          <td className="px-3 py-2">{c.proveedor__nombre}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{c.numero_factura || '—'}</td>
+                          <td className="px-3 py-2 font-semibold">{formatCurrency(c.total)}</td>
+                          <td className="px-3 py-2 text-xs">{`${c.usuario__first_name || ''} ${c.usuario__last_name || ''}`.trim() || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SoftCard>
+            </>
           )}
         </div>
       )}

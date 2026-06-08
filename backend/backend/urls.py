@@ -3,12 +3,16 @@ URL configuration for backend project.
 """
 from django.contrib import admin
 from django.urls import path, include
+import backend.admin_dashboard  # noqa: F401 — inyecta métricas en el dashboard admin
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    # Admin
-    path('admin/', admin.site.urls),
+    # Dashboard personalizado — va ANTES de admin.site.urls para interceptar /admin/
+    path('admin/', include([
+        path('', __import__('apps.sistema.views_admin', fromlist=['dashboard_view']).dashboard_view, name='admin_dashboard_custom'),
+        path('', admin.site.urls),
+    ])),
     
     # API endpoints
     path('api/auth/', include('apps.usuarios.urls')),

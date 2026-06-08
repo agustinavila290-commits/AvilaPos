@@ -2,7 +2,10 @@
 Serializers para el módulo de compras.
 """
 from rest_framework import serializers
-from .models import Proveedor, Compra, DetalleCompra, CompraFacturaAdjunto
+from .models import (
+    Proveedor, Compra, DetalleCompra, CompraFacturaAdjunto,
+    HistorialCosto, OrdenCompra, DetalleOrdenCompra,
+)
 from apps.productos.serializers import VarianteListSerializer
 
 
@@ -169,8 +172,139 @@ class CompraCreateSerializer(serializers.Serializer):
         allow_null=True
     )
     items = DetalleCompraCreateSerializer(many=True)
-    
+
     def validate_items(self, value):
         if not value:
             raise serializers.ValidationError("La compra debe tener al menos un producto")
         return value
+
+
+# ── Historial de costos ───────────────────────────────────────
+
+class HistorialCostoSerializer(serializers.ModelSerializer):
+    usuario_nombre = serializers.CharField(source='usuario.get_full_name', read_only=True)
+    variacion_porcentaje = serializers.ReadOnlyField()
+
+    class Meta:
+        model = HistorialCosto
+        fields = [
+            'id', 'variante', 'costo_anterior', 'costo_nuevo',
+            'variacion_porcentaje', 'usuario', 'usuario_nombre',
+            'fecha', 'referencia_tipo', 'referencia_id', 'observaciones',
+        ]
+        read_only_fields = ['id', 'fecha']
+
+
+# ── Órdenes de compra ─────────────────────────────────────────
+
+class DetalleOrdenCompraSerializer(serializers.ModelSerializer):
+    codigo = serializers.CharField(source='variante.codigo', read_only=True)
+    nombre_completo = serializers.CharField(source='variante.nombre_completo', read_only=True)
+    marca = serializers.CharField(source='variante.producto_base.marca.nombre', read_only=True)
+    cantidad_pendiente = serializers.ReadOnlyField()
+    completado = serializers.ReadOnlyField()
+    costo_actual = serializers.DecimalField(
+        source='variante.costo', max_digits=10, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = DetalleOrdenCompra
+        fields = [
+            'id', 'variante', 'codigo', 'nombre_completo', 'marca',
+            'cantidad_pedida', 'cantidad_recibida', 'cantidad_pendiente',
+            'costo_estimado', 'costo_real', 'costo_actual', 'completado',
+        ]
+        read_only_fields = ['id', 'cantidad_recibida', 'costo_real']
+
+
+class OrdenCompraSerializer(serializers.ModelSerializer):
+    proveedor_nombre = serializers.CharField(source='proveedor.nombre', read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.get_full_name', read_only=True)
+    deposito_nombre = serializers.CharField(source='deposito.nombre', read_only=True)
+    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+    detalles = DetalleOrdenCompraSerializer(many=True, read_only=True)
+    total_estimado = serializers.ReadOnlyField()
+    porcentaje_recibido = serializers.ReadOnlyField()
+    cantidad_items = serializers.SerializerMethodField()
+
+    def get_cantidad_items(self, obj):
+        return obj.detalles.count()
+
+    class Meta:
+        model = OrdenCompra
+        fields = [
+            'id', 'numero',
+            'proveedor', 'proveedor_nombre',
+            'usuario', 'usuario_nombre',
+            'deposito', 'deposito_nombre',
+            'estado', 'estado_display',
+            'fecha_emision', 'fecha_esperada',
+            'numero_referencia', 'observaciones', 'notas_proveedor',
+            'total_estimado', 'porcentaje_recibido', 'cantidad_items',
+            'detalles',
+        ]
+        read_only_fields = ['id', 'numero', 'usuario', 'fecha_emision', 'estado']
+
+
+class OrdenCompraListSerializer(serializers.ModelSerializer):
+    proveedor_nombre = serializers.CharField(source='proveedor.nombre', read_only=True)
+    usuario_nombre = serializers.CharField(source='usuario.get_full_name', read_only=True)
+    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+    total_estimado = serializers.ReadOnlyField()
+    porcentaje_recibido = serializers.ReadOnlyField()
+    cantidad_items = serializers.SerializerMethodField()
+
+    def get_cantidad_items(self, obj):
+        return obj.detalles.count()
+
+    class Meta:
+        model = OrdenCompra
+        fields = [
+            'id', 'numero', 'proveedor_nombre', 'usuario_nombre',
+            'estado', 'estado_display',
+            'fecha_emision', 'fecha_esperada',
+            'numero_referencia', 'total_estimado', 'porcentaje_recibido', 'cantidad_items',
+        ]
+
+
+class DetalleOrdenCreateSerializer(serializers.Serializer):
+    variante_id = serializers.IntegerField()
+    cantidad_pedida = serializers.IntegerField(min_value=1)
+    costo_estimado = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+
+
+class OrdenCompraCreateSerializer(serializers.Serializer):
+    proveedor_id = serializers.IntegerField()
+    deposito_id = serializers.IntegerField()
+    fecha_esperada = serializers.DateField(required=False, allow_null=True)
+    numero_referencia = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    observaciones = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    notas_proveedor = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    items = DetalleOrdenCreateSerializer(many=True)
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError('La orden debe tener al menos un producto.')
+        return value
+
+
+class ItemRecepcionSerializer(serializers.Serializer):
+    detalle_id = serializers.IntegerField()
+    cantidad_a_recibir = serializers.IntegerField(min_value=0)
+    costo_real = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+    actualizar_costo = serializers.BooleanField(default=True)
+    actualizar_precio = serializers.BooleanField(default=False)
+    precio_venta_sugerido = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+
+
+class RecepcionSerializer(serializers.Serializer):
+    items = ItemRecepcionSerializer(many=True)
+    numero_factura = serializers.CharField(max_length=50, required=False, allow_blank=True, allow_null=True)
+    fecha_compra = serializers.DateField(required=False, allow_null=True)
+    observaciones_compra = serializers.CharField(required=False, allow_blank=True, allow_null=True)

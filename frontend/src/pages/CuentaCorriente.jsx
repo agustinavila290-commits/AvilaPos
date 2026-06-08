@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getTickets } from '../services/cuentaCorrienteService';
 import clientesService from '../services/clientesService';
+import { buildWaLink, msgEstadoCuenta } from '../utils/whatsapp';
 export default function CuentaCorriente() {
   const [tickets, setTickets] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -180,19 +181,54 @@ export default function CuentaCorriente() {
                           {t.estado_display ?? t.estado}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-green-600">
-                        {formatCurrency(t.total)}
+                      <td className="px-4 py-3 text-sm">
+                        <span className="font-semibold text-green-600">{formatCurrency(t.total)}</span>
+                        {Number(t.saldo_pendiente) < Number(t.total) && Number(t.saldo_pendiente) > 0 && (
+                          <div className="text-xs text-amber-600 font-medium">
+                            Saldo: {formatCurrency(t.saldo_pendiente)}
+                          </div>
+                        )}
+                        {Number(t.saldo_pendiente) === 0 && t.estado === 'A_SALDAR' && (
+                          <div className="text-xs text-green-600 font-medium">✓ Pagado</div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {formatFecha(t.fecha_apertura)}
+                        {t.esta_vencido && (
+                          <div className="text-xs text-red-600 font-semibold">⚠️ Vencido</div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <Link
-                          to={`/cuenta-corriente/${t.id}`}
-                          className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                        >
-                          Ver detalle →
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/cuenta-corriente/${t.id}`}
+                            className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                          >
+                            Ver →
+                          </Link>
+                          {(t.cliente_whatsapp || t.cliente_telefono) && t.saldo_pendiente > 0 && (
+                            <a
+                              href={buildWaLink(
+                                t.cliente_whatsapp || t.cliente_telefono,
+                                msgEstadoCuenta({
+                                  numero: t.numero,
+                                  cliente_nombre: t.cliente_nombre,
+                                  total: t.total,
+                                  saldo_pendiente: t.saldo_pendiente,
+                                  fecha_apertura: t.fecha_apertura,
+                                  fecha_vencimiento: t.fecha_vencimiento,
+                                })
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-white px-2 py-1 rounded-md hover:brightness-110"
+                              style={{ backgroundColor: '#25D366' }}
+                              title="Enviar estado de cuenta por WhatsApp"
+                            >
+                              WA
+                            </a>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -1,5 +1,21 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Deposito, Stock, MovimientoStock
+
+
+def _badge(bg, color, texto):
+    return format_html(
+        '<span style="background:{};color:{};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;white-space:nowrap">{}</span>',
+        bg, color, texto
+    )
+
+
+_ESTADO_STOCK_COLORS = {
+    'NORMAL':    ('#dcfce7', '#166534', 'Normal'),
+    'BAJO':      ('#fef9c3', '#854d0e', 'Bajo'),
+    'CRITICO':   ('#fee2e2', '#991b1b', 'Crítico'),
+    'SIN_STOCK': ('#f3f4f6', '#374151', 'Sin stock'),
+}
 
 
 @admin.register(Deposito)
@@ -12,16 +28,16 @@ class DepositoAdmin(admin.ModelAdmin):
 
 @admin.register(Stock)
 class StockAdmin(admin.ModelAdmin):
-    list_display = ['variante', 'deposito', 'cantidad', 'es_critico', 'estado', 'fecha_actualizacion']
+    list_display = ['variante', 'deposito', 'cantidad', 'badge_estado', 'fecha_actualizacion']
     list_filter = ['deposito', 'fecha_actualizacion']
     search_fields = ['variante__sku', 'variante__codigo_barras', 'variante__nombre_variante']
     readonly_fields = ['fecha_actualizacion']
     autocomplete_fields = ['variante', 'deposito']
-    
-    def es_critico(self, obj):
-        return obj.es_critico
-    es_critico.boolean = True
-    es_critico.short_description = '¿Crítico?'
+
+    def badge_estado(self, obj):
+        bg, color, label = _ESTADO_STOCK_COLORS.get(obj.estado, ('#f3f4f6', '#374151', obj.estado))
+        return _badge(bg, color, label)
+    badge_estado.short_description = 'Estado'
 
 
 @admin.register(MovimientoStock)
