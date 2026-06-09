@@ -26,9 +26,9 @@ from apps.inventario.services import InventarioService
 
 class VarianteSearchPagination(PageNumberPagination):
     """Búsqueda rápida: pocos resultados por defecto para respuesta casi instantánea."""
-    page_size = 30
+    page_size = 50
     page_size_query_param = 'page_size'
-    max_page_size = 200
+    max_page_size = 500
 
 
 class MarcaViewSet(viewsets.ModelViewSet):
@@ -336,7 +336,10 @@ class VarianteProductoViewSet(viewsets.ModelViewSet):
             queryset = queryset.annotate(
                 stock_actual_anno=Coalesce(Subquery(subq), Value(0, output_field=IntegerField()))
             )
-        
+
+        # Con búsqueda: ordenar por nombre para resultados predecibles y relevantes
+        if search:
+            return queryset.order_by('producto_base__nombre', 'nombre_variante')
         return queryset.order_by('-fecha_creacion')
     
     @action(detail=False, methods=['get'])

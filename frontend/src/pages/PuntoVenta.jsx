@@ -350,7 +350,7 @@ export default function PuntoVentaNuevo() {
         }
       }
       
-      const resultado = await productosService.search(codigo, { page_size: 30 });
+      const resultado = await productosService.search(codigo, { page_size: 200 });
       const variantes = resultado.results || resultado;
       
       if (variantes.length === 1) {
@@ -404,7 +404,7 @@ export default function PuntoVentaNuevo() {
     searchAbortRef.current = new AbortController();
     const signal = searchAbortRef.current.signal;
     try {
-      const data = await productosService.search(t, { page_size: 50, signal });
+      const data = await productosService.search(t, { page_size: 200, signal });
       if (signal?.aborted) return;
       const raw = data.results || data;
       setProductosEncontrados(Array.isArray(raw) ? raw : []);
