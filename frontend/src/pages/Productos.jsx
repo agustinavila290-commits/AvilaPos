@@ -136,6 +136,17 @@ export default function Productos() {
 
   const formatPrice = (price) => `$${parseFloat(price).toFixed(2)}`;
 
+  const handleEliminar = async (e, varianteId) => {
+    e.stopPropagation();
+    if (!confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
+    try {
+      await productosService.deleteVariante(varianteId);
+      setVariantes(prev => prev.filter(v => v.id !== varianteId));
+    } catch {
+      alert('Error al eliminar el producto');
+    }
+  };
+
   const handleCamaraClick = (e, varianteId, productoBaseId) => {
     e.stopPropagation();
     camaraVarianteRef.current = { varianteId, productoBaseId };
@@ -344,6 +355,7 @@ export default function Productos() {
                   )}
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">Stock</th>
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">Estado</th>
+                  {isAdmin() && <th className="px-3 py-3 text-center text-xs font-bold text-gray-700 uppercase">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -442,6 +454,30 @@ export default function Productos() {
                         {variante.activo ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
+                    {isAdmin() && (
+                      <td className="px-3 py-2 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-1 justify-center">
+                          <button
+                            onClick={e => { e.stopPropagation(); navigate(`/productos/${variante.id}`); }}
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                            title="Editar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={e => handleEliminar(e, variante.id)}
+                            className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                            title="Eliminar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
