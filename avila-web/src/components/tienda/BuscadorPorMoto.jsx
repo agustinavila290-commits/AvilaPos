@@ -82,72 +82,102 @@ export default function BuscadorPorMoto() {
 
   if (!loading && modelos.length === 0) return null
 
-  return (
-    <section className="bg-brand-blue-dark py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <p className="text-white font-bold text-lg text-center mb-1">
-          Encontrá repuestos para tu moto
-        </p>
-        <p className="text-blue-200 text-sm text-center mb-5">
-          Seleccioná tu moto y te mostramos los productos compatibles
-        </p>
+  const motoSeleccionada = marcaSel && modeloSel && anioSel
+    ? `${marcaSel} ${modeloSel} ${anioSel}`
+    : null
 
+  return (
+    <section className="bg-brand-dark py-8 px-4 border-b-4 border-brand-blue">
+      <div className="max-w-4xl mx-auto">
+        {/* Encabezado */}
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center gap-2 bg-brand-blue/20 text-brand-blue text-xs font-semibold px-3 py-1 rounded-full mb-2 border border-brand-blue/30">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Búsqueda por compatibilidad
+          </div>
+          <p className="text-white font-bold text-xl mb-1">
+            Encontrá repuestos compatibles con tu moto
+          </p>
+          <p className="text-gray-400 text-sm">
+            Seleccioná marca, modelo y año para ver todos los repuestos que le corresponden
+          </p>
+        </div>
+
+        {/* Moto activa seleccionada */}
+        {motoSeleccionada && modeloId && (
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <span className="bg-brand-blue/20 border border-brand-blue/40 text-white text-sm px-4 py-1.5 rounded-full flex items-center gap-2">
+              🏍️ <span className="font-semibold">{motoSeleccionada}</span>
+            </span>
+            <button
+              onClick={handleLimpiar}
+              className="text-gray-400 hover:text-white transition-colors text-sm"
+              title="Cambiar moto"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Selects */}
         <div className="flex flex-col sm:flex-row gap-3 items-end justify-center">
           {/* Marca */}
-          <div className="flex-1 min-w-0">
-            <label className="block text-xs text-blue-200 mb-1">Marca</label>
+          <div className="flex-1 min-w-0 w-full">
+            <label className="block text-xs text-gray-400 mb-1 font-medium">Marca de moto</label>
             <select
               value={marcaSel}
               onChange={e => handleMarcaChange(e.target.value)}
               disabled={loading || modelos.length === 0}
-              className="w-full rounded-xl border border-blue-400 bg-blue-900/60 text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-40"
+              className="w-full rounded-lg border border-white/20 bg-white/10 text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:opacity-40 appearance-none"
             >
-              <option value="">Marca de moto</option>
-              {marcas.map(m => <option key={m} value={m}>{m}</option>)}
+              <option value="" className="text-gray-900">Seleccioná una marca</option>
+              {marcas.map(m => <option key={m} value={m} className="text-gray-900">{m}</option>)}
             </select>
           </div>
 
           {/* Modelo */}
-          <div className="flex-1 min-w-0">
-            <label className="block text-xs text-blue-200 mb-1">Modelo</label>
+          <div className="flex-1 min-w-0 w-full">
+            <label className="block text-xs text-gray-400 mb-1 font-medium">Modelo</label>
             <select
               value={modeloSel}
               onChange={e => handleModeloChange(e.target.value)}
               disabled={!marcaSel || loading}
-              className="w-full rounded-xl border border-blue-400 bg-blue-900/60 text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-40"
+              className="w-full rounded-lg border border-white/20 bg-white/10 text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:opacity-40 appearance-none"
             >
-              <option value="">Modelo</option>
-              {modelosParaMarca.map(m => <option key={m} value={m}>{m}</option>)}
+              <option value="" className="text-gray-900">Seleccioná un modelo</option>
+              {modelosParaMarca.map(m => <option key={m} value={m} className="text-gray-900">{m}</option>)}
             </select>
           </div>
 
           {/* Año */}
           <div className="w-full sm:w-32">
-            <label className="block text-xs text-blue-200 mb-1">Año</label>
+            <label className="block text-xs text-gray-400 mb-1 font-medium">Año</label>
             <select
               value={anioSel}
               onChange={e => setAnioSel(e.target.value)}
               disabled={!modeloSel || loading}
-              className="w-full rounded-xl border border-blue-400 bg-blue-900/60 text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-40"
+              className="w-full rounded-lg border border-white/20 bg-white/10 text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:opacity-40 appearance-none"
             >
-              <option value="">Año</option>
-              {aniosParaModelo.map(a => <option key={a} value={a}>{a}</option>)}
+              <option value="" className="text-gray-900">Año</option>
+              {aniosParaModelo.map(a => <option key={a} value={a} className="text-gray-900">{a}</option>)}
             </select>
           </div>
 
-          {/* Acciones */}
-          <div className="flex gap-2 flex-shrink-0">
+          {/* Botón buscar */}
+          <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto">
             <button
               onClick={handleBuscar}
               disabled={!modeloId}
-              className="bg-white text-brand-blue font-bold px-6 py-2.5 rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+              className="flex-1 sm:flex-none bg-brand-blue hover:bg-brand-blue-dark text-white font-bold px-6 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm whitespace-nowrap"
             >
-              Buscar →
+              Ver repuestos →
             </button>
             {(marcaSel || modeloSel || anioSel) && (
               <button
                 onClick={handleLimpiar}
-                className="text-blue-300 hover:text-white transition-colors text-lg px-1"
+                className="text-gray-400 hover:text-white transition-colors px-2 text-sm border border-white/20 rounded-lg"
                 title="Limpiar selección"
               >
                 ✕

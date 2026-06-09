@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { tiendaApi } from '../../services/api'
+import { WA_NUMBER } from '../../config'
 import SEO from '../../components/SEO'
 import ProductCard from '../../components/tienda/ProductCard'
 import ProductCardSkeleton from '../../components/tienda/ProductCardSkeleton'
@@ -16,6 +17,7 @@ export default function CatalogoPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false)
 
   // Autocompletado
   const [inputVal, setInputVal] = useState('')
@@ -35,27 +37,22 @@ export default function CatalogoPage() {
   const precioMax = searchParams.get('precio_max') || ''
   const page = parseInt(searchParams.get('page') || '1', 10)
 
-  // Sync inputVal cuando cambia el param de URL (p.ej. al navegar con back)
   useEffect(() => { setInputVal(search) }, [search])
 
-  // Cargar categorías y marcas una sola vez
   useEffect(() => {
     tiendaApi.getCategorias().then(r => setCategorias(r.data)).catch(() => {})
     tiendaApi.getMarcas().then(r => setMarcas(r.data)).catch(() => {})
   }, [])
 
-  // Cargar productos cuando cambian los filtros
   const fetchProductos = useCallback(() => {
     setLoading(true)
     setError(null)
-
     const params = { page, page_size: 24 }
     if (search) params.search = search
     if (categoriaId) params.categoria = categoriaId
     if (marcaId) params.marca = marcaId
     if (modeloId) params.modelo = modeloId
     if (ordering) params.ordering = ordering
-
     tiendaApi.getProductos(params)
       .then(r => {
         setProductos(r.data.results)
@@ -66,9 +63,7 @@ export default function CatalogoPage() {
       .finally(() => setLoading(false))
   }, [search, categoriaId, marcaId, modeloId, ordering, page])
 
-  useEffect(() => {
-    fetchProductos()
-  }, [fetchProductos])
+  useEffect(() => { fetchProductos() }, [fetchProductos])
 
   function setParam(key, value) {
     const next = new URLSearchParams(searchParams)
@@ -78,7 +73,6 @@ export default function CatalogoPage() {
     setSearchParams(next)
   }
 
-  // Autocompletado: debounce al escribir
   function handleSearchInput(val) {
     setInputVal(val)
     setShowSug(true)
@@ -89,9 +83,7 @@ export default function CatalogoPage() {
       return
     }
     debounceRef.current = setTimeout(() => {
-      // Actualizar URL param (dispara el fetch principal)
       setParam('search', val)
-      // Fetch sugerencias rápidas
       tiendaApi.getProductos({ search: val, page_size: 5 })
         .then(r => setSugerencias(r.data.results))
         .catch(() => setSugerencias([]))
@@ -103,18 +95,14 @@ export default function CatalogoPage() {
     setSugerencias([])
   }
 
-  // Cerrar dropdown al hacer click fuera
   useEffect(() => {
     function onClickOut(e) {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setShowSug(false)
-      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSug(false)
     }
     document.addEventListener('mousedown', onClickOut)
     return () => document.removeEventListener('mousedown', onClickOut)
   }, [])
 
-  // Filtro de precio client-side (sobre la página actual)
   const productosFiltrados = productos.filter(p => {
     const precio = parseFloat(p.precio_web)
     if (precioMin && precio < parseFloat(precioMin)) return false
@@ -130,10 +118,10 @@ export default function CatalogoPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <SEO title="Catálogo" description={seoDesc} />
+      <SEO title="Catálogo de repuestos para motos" description={seoDesc} />
 
-      {/* Título */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
         <h1 className="text-2xl font-bold text-brand-text flex-1">Catálogo</h1>
         {totalCount > 0 && !loading && (
           <span className="text-sm text-brand-muted">{totalCount} producto{totalCount !== 1 ? 's' : ''}</span>
@@ -142,19 +130,22 @@ export default function CatalogoPage() {
 
       {/* Badge moto activa */}
       {modeloId && motoLabel && (
-        <div className="flex items-center gap-2 mb-5 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm">
+        <div className="flex items-center gap-2 mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm">
           <span className="text-2xl">🏍️</span>
           <span className="text-brand-blue font-medium flex-1">
             Mostrando repuestos para: <span className="font-bold">{decodeURIComponent(motoLabel)}</span>
           </span>
-          <button onClick={() => setSearchParams({})} className="text-brand-muted hover:text-brand-red transition-colors text-xs">
+          <button
+            onClick={() => setSearchParams({})}
+            className="text-brand-muted hover:text-brand-blue transition-colors text-xs whitespace-nowrap"
+          >
             Ver todo ✕
           </button>
         </div>
       )}
 
-      {/* Fila 1: búsqueda con autocompletado + categoría */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-3">
+      {/* Buscador + botón filtros mobile */}
+      <div className="flex gap-3 mb-3">
         <div className="relative flex-1" ref={searchRef}>
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-muted z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
@@ -202,58 +193,87 @@ export default function CatalogoPage() {
             </div>
           )}
         </div>
-        <select
-          value={categoriaId}
-          onChange={e => setParam('categoria', e.target.value)}
-          className="input sm:w-52"
+
+        {/* Botón filtros (mobile) */}
+        <button
+          onClick={() => setFiltrosAbiertos(v => !v)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors sm:hidden flex-shrink-0 ${
+            filtrosAbiertos || hayFiltros
+              ? 'border-brand-blue bg-red-50 text-brand-blue'
+              : 'border-brand-border bg-white text-brand-muted'
+          }`}
         >
-          <option value="">Todas las categorías</option>
-          {categorias.map(c => (
-            <option key={c.id} value={c.id}>{c.nombre.charAt(0).toUpperCase() + c.nombre.slice(1).toLowerCase()}</option>
-          ))}
-        </select>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+          </svg>
+          Filtros
+          {hayFiltros && <span className="w-2 h-2 rounded-full bg-brand-blue" />}
+        </button>
       </div>
 
-      {/* Fila 2: marca + precio + ordenamiento + limpiar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-8 flex-wrap">
-        <select value={marcaId} onChange={e => setParam('marca', e.target.value)} className="input sm:w-44">
-          <option value="">Todas las marcas</option>
-          {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-        </select>
-        <input
-          type="number"
-          placeholder="Precio mín"
-          value={precioMin}
-          onChange={e => setParam('precio_min', e.target.value)}
-          className="input sm:w-32"
-          min="0"
-        />
-        <input
-          type="number"
-          placeholder="Precio máx"
-          value={precioMax}
-          onChange={e => setParam('precio_max', e.target.value)}
-          className="input sm:w-32"
-          min="0"
-        />
-        <select value={ordering} onChange={e => setParam('ordering', e.target.value)} className="input sm:w-52">
-          <option value="">Orden por defecto</option>
-          <option value="nombre">Nombre A-Z</option>
-          <option value="-nombre">Nombre Z-A</option>
-          <option value="precio_web">Precio: menor a mayor</option>
-          <option value="-precio_web">Precio: mayor a menor</option>
-        </select>
-        {hayFiltros && (
-          <button onClick={() => setSearchParams({})} className="text-sm text-brand-muted hover:text-brand-red transition-colors whitespace-nowrap self-center">
-            Limpiar filtros ✕
-          </button>
-        )}
+      {/* Filtros (desktop siempre visible, mobile toggle) */}
+      <div className={`${filtrosAbiertos ? 'block' : 'hidden sm:block'} mb-6`}>
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          <select
+            value={categoriaId}
+            onChange={e => setParam('categoria', e.target.value)}
+            className="input sm:w-52"
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map(c => (
+              <option key={c.id} value={c.id}>{c.nombre.charAt(0).toUpperCase() + c.nombre.slice(1).toLowerCase()}</option>
+            ))}
+          </select>
+          <select
+            value={marcaId}
+            onChange={e => setParam('marca', e.target.value)}
+            className="input sm:w-44"
+          >
+            <option value="">Todas las marcas</option>
+            {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+          </select>
+          <input
+            type="number"
+            placeholder="Precio mín"
+            value={precioMin}
+            onChange={e => setParam('precio_min', e.target.value)}
+            className="input sm:w-32"
+            min="0"
+          />
+          <input
+            type="number"
+            placeholder="Precio máx"
+            value={precioMax}
+            onChange={e => setParam('precio_max', e.target.value)}
+            className="input sm:w-32"
+            min="0"
+          />
+          <select
+            value={ordering}
+            onChange={e => setParam('ordering', e.target.value)}
+            className="input sm:w-52"
+          >
+            <option value="">Orden por defecto</option>
+            <option value="nombre">Nombre A-Z</option>
+            <option value="-nombre">Nombre Z-A</option>
+            <option value="precio_web">Precio: menor a mayor</option>
+            <option value="-precio_web">Precio: mayor a menor</option>
+          </select>
+          {hayFiltros && (
+            <button
+              onClick={() => { setSearchParams({}); setFiltrosAbiertos(false) }}
+              className="text-sm text-brand-muted hover:text-brand-blue transition-colors whitespace-nowrap self-center"
+            >
+              Limpiar filtros ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-6 flex items-center gap-3">
-          <span className="text-lg">⚠</span>
+          <span>⚠</span>
           <span>{error}</span>
           <button onClick={fetchProductos} className="ml-auto text-sm underline">Reintentar</button>
         </div>
@@ -265,10 +285,33 @@ export default function CatalogoPage() {
           {Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)}
         </div>
       ) : productosFiltrados.length === 0 && !error ? (
-        <div className="text-center py-20 text-brand-muted">
+        <div className="text-center py-20">
           <p className="text-5xl mb-4">🔍</p>
-          <p className="text-lg font-medium">No se encontraron productos</p>
-          <p className="text-sm mt-1">Probá con otros filtros</p>
+          <p className="text-lg font-semibold text-brand-text mb-1">
+            No encontramos productos con esos filtros
+          </p>
+          <p className="text-sm text-brand-muted mb-6">
+            Probá limpiar los filtros o consultanos directamente por WhatsApp.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => setSearchParams({})}
+              className="btn-secondary"
+            >
+              Limpiar filtros
+            </button>
+            <a
+              href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola! Busco un repuesto que no encuentro en la web. ¿Pueden ayudarme?')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              Consultar por WhatsApp
+            </a>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

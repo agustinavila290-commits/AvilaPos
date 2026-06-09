@@ -12,6 +12,7 @@ const MOTIVOS = [
   'Consulta sobre un producto',
   'Consulta sobre un pedido',
   'Disponibilidad de stock',
+  'Envíos y costos',
   'Otro',
 ]
 
@@ -23,18 +24,25 @@ const WA_SVG = (
 
 export default function ContactoPage() {
   const [form, setForm] = useState({ nombre: '', motivo: MOTIVOS[0], mensaje: '' })
+  const [errores, setErrores] = useState({})
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+    if (errores[e.target.name]) setErrores(e => ({ ...e, [e.target.name]: null }))
   }
 
   function handleSubmit(e) {
     e.preventDefault()
+    const errs = {}
+    if (!form.nombre.trim()) errs.nombre = 'El nombre es obligatorio'
+    if (!form.mensaje.trim()) errs.mensaje = 'El mensaje es obligatorio'
+    if (Object.keys(errs).length > 0) { setErrores(errs); return }
+
     const texto = `Hola! Soy ${form.nombre}.\nMotivo: ${form.motivo}\n\n${form.mensaje}`
     window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(texto)}`, '_blank')
   }
 
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SITIO.direccion + ', Argentina')}`
+  const mapsUrl   = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SITIO.direccion + ', Argentina')}`
   const mapsEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(SITIO.direccion + ', Argentina')}&t=&z=16&ie=UTF8&iwloc=&output=embed`
 
   return (
@@ -44,8 +52,11 @@ export default function ContactoPage() {
         description={`Contactate con ${SITIO.nombre}. Estamos en ${SITIO.direccion}. Respondemos por WhatsApp.`}
       />
 
-      <h1 className="text-2xl font-bold text-brand-text mb-2">Contacto y cómo llegar</h1>
-      <p className="text-brand-muted mb-8">Estamos en {SITIO.direccion}. Respondemos por WhatsApp en el horario de atención.</p>
+      <h1 className="text-2xl font-bold text-brand-text mb-1">Contacto y cómo llegar</h1>
+      <p className="text-brand-muted mb-8">
+        Estamos en <strong className="text-brand-text">{SITIO.direccion}</strong>, {SITIO.localidad}.
+        Respondemos por WhatsApp en el horario de atención.
+      </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Columna izquierda: mapa + info */}
@@ -62,18 +73,31 @@ export default function ContactoPage() {
               src={mapsEmbed}
             />
           </div>
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-brand-blue hover:underline"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            Abrir en Google Maps
-          </a>
+
+          {/* Botones de acción rápida */}
+          <div className="flex gap-3">
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 btn-secondary text-sm py-2.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Cómo llegar
+            </a>
+            <a
+              href={`https://wa.me/${WA_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 bg-brand-green hover:bg-green-700 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors"
+            >
+              {WA_SVG} WhatsApp
+            </a>
+          </div>
 
           {/* Info del local */}
           <div className="card p-5">
@@ -81,16 +105,21 @@ export default function ContactoPage() {
               <div className="flex gap-3">
                 <span className="text-xl mt-0.5">📍</span>
                 <div>
-                  <p className="text-xs text-brand-muted">Dirección</p>
+                  <p className="text-xs text-brand-muted mb-0.5">Dirección</p>
                   <p className="text-sm font-medium text-brand-text">{SITIO.direccion}</p>
+                  <p className="text-sm text-brand-muted">{SITIO.localidad}, {SITIO.provincia}</p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <span className="text-xl mt-0.5">💬</span>
                 <div>
-                  <p className="text-xs text-brand-muted">WhatsApp</p>
-                  <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener noreferrer"
-                    className="text-sm font-medium text-brand-blue hover:underline">
+                  <p className="text-xs text-brand-muted mb-0.5">WhatsApp</p>
+                  <a
+                    href={`https://wa.me/${WA_NUMBER}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-brand-blue hover:underline"
+                  >
                     +{WA_NUMBER}
                   </a>
                 </div>
@@ -98,25 +127,29 @@ export default function ContactoPage() {
               <div className="flex gap-3">
                 <span className="text-xl mt-0.5">🕐</span>
                 <div>
-                  <p className="text-xs text-brand-muted mb-1">Horarios de atención</p>
-                  {HORARIOS.map(h => (
-                    <div key={h.dia} className="flex justify-between text-sm gap-4">
-                      <span className="text-brand-muted">{h.dia}</span>
-                      <span className={`font-medium ${h.horario === 'Cerrado' ? 'text-brand-muted' : 'text-brand-text'}`}>
-                        {h.horario}
-                      </span>
-                    </div>
-                  ))}
+                  <p className="text-xs text-brand-muted mb-2">Horarios de atención</p>
+                  <div className="flex flex-col gap-1">
+                    {HORARIOS.map(h => (
+                      <div key={h.dia} className="flex justify-between text-sm gap-4">
+                        <span className="text-brand-muted">{h.dia}</span>
+                        <span className={`font-medium ${h.horario === 'Cerrado' ? 'text-brand-muted' : 'text-brand-text'}`}>
+                          {h.horario}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Columna derecha: formulario WhatsApp */}
+        {/* Columna derecha: formulario */}
         <div className="card p-6">
-          <h2 className="font-semibold text-brand-text mb-5">Envianos un mensaje</h2>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <h2 className="font-semibold text-brand-text text-lg mb-1">Envianos un mensaje</h2>
+          <p className="text-sm text-brand-muted mb-5">Te respondemos por WhatsApp al instante.</p>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-brand-text">
                 Tu nombre <span className="text-brand-red">*</span>
@@ -125,10 +158,10 @@ export default function ContactoPage() {
                 name="nombre"
                 value={form.nombre}
                 onChange={handleChange}
-                required
                 placeholder="Juan Pérez"
-                className="input"
+                className={`input ${errores.nombre ? 'border-brand-red' : ''}`}
               />
+              {errores.nombre && <p className="text-xs text-brand-red">{errores.nombre}</p>}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -146,16 +179,18 @@ export default function ContactoPage() {
                 name="mensaje"
                 value={form.mensaje}
                 onChange={handleChange}
-                required
                 rows={5}
                 placeholder="Escribí tu consulta acá..."
-                className="input resize-none"
+                className={`input resize-none ${errores.mensaje ? 'border-brand-red' : ''}`}
               />
+              {errores.mensaje && <p className="text-xs text-brand-red">{errores.mensaje}</p>}
             </div>
 
-            <button type="submit" className="btn-primary py-3 flex items-center justify-center gap-2">
-              {WA_SVG}
-              Enviar por WhatsApp
+            <button
+              type="submit"
+              className="btn-primary py-3 flex items-center justify-center gap-2"
+            >
+              {WA_SVG} Enviar por WhatsApp
             </button>
           </form>
 
@@ -166,8 +201,7 @@ export default function ContactoPage() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-brand-green hover:underline"
             >
-              {WA_SVG}
-              O escribinos directamente a WhatsApp
+              {WA_SVG} O escribinos directamente a WhatsApp
             </a>
           </div>
         </div>

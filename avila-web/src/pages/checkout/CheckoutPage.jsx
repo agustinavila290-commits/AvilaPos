@@ -3,27 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useCarrito } from '../../context/CarritoContext'
 import { useAuth } from '../../context/AuthContext'
 import { tiendaApi } from '../../services/api'
+import { BANK_INFO } from '../../config'
 import SEO from '../../components/SEO'
 
 const METODOS_PAGO = [
-  {
-    id: 'mercadopago',
-    label: 'Mercado Pago',
-    desc: 'Tarjeta, débito, QR o saldo MP',
-    icon: '💳',
-  },
-  {
-    id: 'transferencia',
-    label: 'Transferencia bancaria',
-    desc: 'Te enviamos los datos por WhatsApp',
-    icon: '🏦',
-  },
-  {
-    id: 'efectivo',
-    label: 'Efectivo al retirar',
-    desc: 'Solo disponible con retiro en local',
-    icon: '💵',
-  },
+  { id: 'mercadopago',   label: 'Mercado Pago',         desc: 'Tarjeta, débito, QR o saldo MP', icon: '💳' },
+  { id: 'transferencia', label: 'Transferencia bancaria', desc: 'Transferí y enviá el comprobante', icon: '🏦' },
+  { id: 'efectivo',      label: 'Efectivo al retirar',   desc: 'Solo disponible con retiro en local', icon: '💵' },
 ]
 
 function CampoTexto({ label, name, value, onChange, error, type = 'text', placeholder, required }) {
@@ -69,6 +55,76 @@ function ResumenCarrito({ items, totalPrecio }) {
   )
 }
 
+function DatosBancarios() {
+  const [copiadoAlias, setCopiadoAlias] = useState(false)
+  const [copiadoCbu, setCopiadoCbu] = useState(false)
+
+  function copiar(texto, tipo) {
+    navigator.clipboard.writeText(texto).then(() => {
+      if (tipo === 'alias') { setCopiadoAlias(true); setTimeout(() => setCopiadoAlias(false), 2000) }
+      else { setCopiadoCbu(true); setTimeout(() => setCopiadoCbu(false), 2000) }
+    }).catch(() => {})
+  }
+
+  return (
+    <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm">
+      <p className="font-semibold text-brand-dark mb-3 flex items-center gap-2">
+        🏦 Datos para la transferencia
+      </p>
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-brand-muted">Titular</span>
+          <span className="font-medium text-brand-text">{BANK_INFO.titular}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-brand-muted">Banco</span>
+          <span className="font-medium text-brand-text">{BANK_INFO.banco}</span>
+        </div>
+        <div className="flex justify-between items-center gap-2">
+          <span className="text-brand-muted">Alias</span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono font-semibold text-brand-dark">{BANK_INFO.alias}</span>
+            <button
+              type="button"
+              onClick={() => copiar(BANK_INFO.alias, 'alias')}
+              className="text-xs text-brand-blue hover:underline ml-1"
+            >
+              {copiadoAlias ? '✓ Copiado' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+        <div className="flex justify-between items-center gap-2">
+          <span className="text-brand-muted">CBU/CVU</span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-xs text-brand-dark">{BANK_INFO.cbu}</span>
+            <button
+              type="button"
+              onClick={() => copiar(BANK_INFO.cbu, 'cbu')}
+              className="text-xs text-brand-blue hover:underline ml-1"
+            >
+              {copiadoCbu ? '✓ Copiado' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <p className="text-xs text-brand-muted mt-3 border-t border-blue-200 pt-3">
+        Luego de transferir, enviá el comprobante por WhatsApp indicando tu número de pedido.
+      </p>
+    </div>
+  )
+}
+
+function StepLabel({ numero, texto }) {
+  return (
+    <h2 className="font-semibold text-brand-text mb-4 flex items-center gap-2">
+      <span className="w-6 h-6 bg-brand-blue text-white rounded-full text-xs flex items-center justify-center font-bold flex-shrink-0">
+        {numero}
+      </span>
+      {texto}
+    </h2>
+  )
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const { items, totalPrecio, dispatch } = useCarrito()
@@ -79,16 +135,16 @@ export default function CheckoutPage() {
   const [errorGeneral, setErrorGeneral] = useState(null)
 
   const [form, setForm] = useState({
-    nombre: user?.nombre || '',
-    email: user?.email || '',
-    telefono: '',
-    tipoEntrega: 'retiro',
+    nombre:        user?.nombre || '',
+    email:         user?.email  || '',
+    telefono:      '',
+    tipoEntrega:   'retiro',
     puntoRetiroId: '',
-    direccion: '',
-    localidad: '',
-    cp: '',
-    provincia: '',
-    metodoPago: 'mercadopago',
+    direccion:     '',
+    localidad:     '',
+    cp:            '',
+    provincia:     '',
+    metodoPago:    'mercadopago',
   })
 
   const [errores, setErrores] = useState({})
@@ -97,14 +153,11 @@ export default function CheckoutPage() {
     tiendaApi.getPuntosRetiro()
       .then(r => {
         setPuntosRetiro(r.data)
-        if (r.data.length > 0) {
-          setForm(f => ({ ...f, puntoRetiroId: String(r.data[0].id) }))
-        }
+        if (r.data.length > 0) setForm(f => ({ ...f, puntoRetiroId: String(r.data[0].id) }))
       })
       .catch(() => {})
   }, [])
 
-  // Si el carrito está vacío, redirigir al catálogo
   useEffect(() => {
     if (items.length === 0) navigate('/catalogo', { replace: true })
   }, [items, navigate])
@@ -121,10 +174,7 @@ export default function CheckoutPage() {
     if (!form.email.trim()) e.email = 'El email es obligatorio'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email inválido'
     if (!form.telefono.trim()) e.telefono = 'El teléfono es obligatorio'
-
-    if (form.tipoEntrega === 'retiro' && !form.puntoRetiroId) {
-      e.puntoRetiroId = 'Seleccioná un punto de retiro'
-    }
+    if (form.tipoEntrega === 'retiro' && !form.puntoRetiroId) e.puntoRetiroId = 'Seleccioná un punto de retiro'
     if (form.tipoEntrega === 'envio') {
       if (!form.direccion.trim()) e.direccion = 'La dirección es obligatoria'
       if (!form.localidad.trim()) e.localidad = 'La localidad es obligatoria'
@@ -138,10 +188,7 @@ export default function CheckoutPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     const errs = validar()
-    if (Object.keys(errs).length > 0) {
-      setErrores(errs)
-      return
-    }
+    if (Object.keys(errs).length > 0) { setErrores(errs); return }
 
     setLoading(true)
     setErrorGeneral(null)
@@ -149,24 +196,16 @@ export default function CheckoutPage() {
     const body = {
       line_items: items.map(i => ({ variante_id: i.id, cantidad: i.cantidad })),
       datos_cliente: {
-        nombre: form.nombre,
-        email: form.email,
-        telefono: form.telefono,
-        direccion: form.direccion,
-        localidad: form.localidad,
-        cp: form.cp,
-        provincia: form.provincia,
+        nombre: form.nombre, email: form.email, telefono: form.telefono,
+        direccion: form.direccion, localidad: form.localidad, cp: form.cp, provincia: form.provincia,
       },
       tipo_entrega: form.tipoEntrega,
-      ...(form.tipoEntrega === 'retiro'
-        ? { punto_retiro_id: parseInt(form.puntoRetiroId) }
-        : {}),
+      ...(form.tipoEntrega === 'retiro' ? { punto_retiro_id: parseInt(form.puntoRetiroId) } : {}),
     }
 
     try {
       const res = await tiendaApi.crearPedido(body)
       const { venta_id, venta_numero } = res.data
-
       dispatch({ type: 'VACIAR' })
 
       if (form.metodoPago === 'mercadopago') {
@@ -186,15 +225,12 @@ export default function CheckoutPage() {
           navigate(`/confirmacion/${venta_numero}?pago=mercadopago&error=mp`)
         }
       } else {
-        navigate(`/confirmacion/${venta_numero}?pago=${form.metodoPago}`)
+        navigate(`/confirmacion/${venta_numero}?pago=${form.metodoPago}&nombre=${encodeURIComponent(form.nombre)}`)
       }
     } catch (err) {
       const detalle = err.response?.data?.detalle
-      if (Array.isArray(detalle)) {
-        setErrorGeneral(detalle.join(' · '))
-      } else {
-        setErrorGeneral(err.response?.data?.error || 'Ocurrió un error al procesar el pedido. Intentá de nuevo.')
-      }
+      if (Array.isArray(detalle)) setErrorGeneral(detalle.join(' · '))
+      else setErrorGeneral(err.response?.data?.error || 'Ocurrió un error al procesar el pedido. Intentá de nuevo.')
       setLoading(false)
     }
   }
@@ -220,10 +256,7 @@ export default function CheckoutPage() {
 
             {/* Sección 1: Datos personales */}
             <div className="card p-5">
-              <h2 className="font-semibold text-brand-text mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 bg-brand-blue text-white rounded-full text-xs flex items-center justify-center font-bold">1</span>
-                Datos de contacto
-              </h2>
+              <StepLabel numero={1} texto="Datos de contacto" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <CampoTexto label="Nombre completo" name="nombre" value={form.nombre} onChange={handleChange} error={errores.nombre} placeholder="Juan Pérez" required />
@@ -235,21 +268,17 @@ export default function CheckoutPage() {
 
             {/* Sección 2: Entrega */}
             <div className="card p-5">
-              <h2 className="font-semibold text-brand-text mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 bg-brand-blue text-white rounded-full text-xs flex items-center justify-center font-bold">2</span>
-                Entrega
-              </h2>
-
+              <StepLabel numero={2} texto="Entrega" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 {[
                   { id: 'retiro', label: 'Retiro en local', desc: 'Av. Pte. Castillo 1165', icon: '🏪' },
-                  { id: 'envio', label: 'Envío a domicilio', desc: 'Coordinar por WhatsApp', icon: '🚚' },
+                  { id: 'envio',  label: 'Envío a domicilio', desc: 'Coordinar por WhatsApp', icon: '🚚' },
                 ].map(op => (
                   <label
                     key={op.id}
                     className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                       form.tipoEntrega === op.id
-                        ? 'border-brand-blue bg-blue-50'
+                        ? 'border-brand-blue bg-red-50'
                         : 'border-brand-border hover:border-brand-blue/40'
                     }`}
                   >
@@ -269,7 +298,6 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Punto de retiro */}
               {form.tipoEntrega === 'retiro' && (
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-brand-text">
@@ -296,7 +324,6 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Datos de envío */}
               {form.tipoEntrega === 'envio' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                   <div className="sm:col-span-2">
@@ -311,10 +338,7 @@ export default function CheckoutPage() {
 
             {/* Sección 3: Pago */}
             <div className="card p-5">
-              <h2 className="font-semibold text-brand-text mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 bg-brand-blue text-white rounded-full text-xs flex items-center justify-center font-bold">3</span>
-                Método de pago
-              </h2>
+              <StepLabel numero={3} texto="Método de pago" />
               <div className="flex flex-col gap-2">
                 {METODOS_PAGO.map(mp => {
                   const deshabilitado = mp.id === 'efectivo' && form.tipoEntrega === 'envio'
@@ -325,7 +349,7 @@ export default function CheckoutPage() {
                         deshabilitado
                           ? 'border-brand-border opacity-40 cursor-not-allowed'
                           : form.metodoPago === mp.id
-                          ? 'border-brand-blue bg-blue-50 cursor-pointer'
+                          ? 'border-brand-blue bg-red-50 cursor-pointer'
                           : 'border-brand-border hover:border-brand-blue/40 cursor-pointer'
                       }`}
                     >
@@ -347,6 +371,9 @@ export default function CheckoutPage() {
                 })}
                 {errores.metodoPago && <p className="text-xs text-brand-red mt-1">{errores.metodoPago}</p>}
               </div>
+
+              {/* Datos bancarios inline cuando elige transferencia */}
+              {form.metodoPago === 'transferencia' && <DatosBancarios />}
             </div>
 
             {/* Error general */}
@@ -357,7 +384,7 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* Sidebar: Resumen */}
+          {/* Sidebar */}
           <div className="flex flex-col gap-4">
             <ResumenCarrito items={items} totalPrecio={totalPrecio} />
 
@@ -376,6 +403,8 @@ export default function CheckoutPage() {
             <p className="text-xs text-brand-muted text-center">
               Al confirmar aceptás nuestras condiciones de venta.
             </p>
+
+            {/* TODO: confirmar pagos reales mediante webhook de Mercado Pago en backend */}
           </div>
         </div>
       </form>

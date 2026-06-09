@@ -21,7 +21,12 @@ function ItemCarrito({ item, dispatch }) {
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-brand-text text-sm leading-snug mb-1 truncate">{item.nombre}</p>
+        <Link
+          to={`/producto/${item.id}`}
+          className="font-semibold text-brand-text text-sm leading-snug mb-1 block hover:text-brand-blue transition-colors line-clamp-2"
+        >
+          {item.nombre}
+        </Link>
         <p className="text-brand-muted text-sm">${item.precio_web.toLocaleString('es-AR')} c/u</p>
 
         {/* Cantidad */}
@@ -66,9 +71,12 @@ export default function CarritoPage() {
               d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
         </div>
-        <p className="text-lg font-semibold text-brand-text mb-1">Tu carrito está vacío</p>
-        <p className="text-brand-muted text-sm mb-6">Agregá productos desde el catálogo</p>
-        <Link to="/catalogo" className="btn-primary">Ver catálogo</Link>
+        <p className="text-xl font-bold text-brand-text mb-2">Tu carrito está vacío</p>
+        <p className="text-brand-muted text-sm mb-8">Encontrá repuestos para tu moto y empezá a agregar productos.</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link to="/catalogo" className="btn-primary">Ver catálogo</Link>
+          <Link to="/#buscador-moto" className="btn-secondary">Buscar por moto</Link>
+        </div>
       </div>
     )
   }
@@ -76,10 +84,14 @@ export default function CarritoPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <SEO title={`Carrito (${totalItems})`} />
+
       {/* Encabezado */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-brand-text">
-          Carrito <span className="text-brand-muted font-normal text-lg">({totalItems} {totalItems === 1 ? 'item' : 'items'})</span>
+          Carrito{' '}
+          <span className="text-brand-muted font-normal text-lg">
+            ({totalItems} {totalItems === 1 ? 'item' : 'items'})
+          </span>
         </h1>
         <button
           onClick={() => dispatch({ type: 'VACIAR' })}
@@ -98,14 +110,16 @@ export default function CarritoPage() {
 
       {/* Banner envío gratis */}
       {totalPrecio < ENVIO_GRATIS_DESDE && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm">
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-brand-blue font-medium">
-              🚚 Te faltan <span className="font-bold">${(ENVIO_GRATIS_DESDE - totalPrecio).toLocaleString('es-AR')}</span> para envío gratis
+              🚚 Te faltan{' '}
+              <span className="font-bold">${(ENVIO_GRATIS_DESDE - totalPrecio).toLocaleString('es-AR')}</span>{' '}
+              para envío gratis
             </span>
             <span className="text-brand-muted text-xs">${ENVIO_GRATIS_DESDE.toLocaleString('es-AR')} mín.</span>
           </div>
-          <div className="w-full bg-blue-200 rounded-full h-2">
+          <div className="w-full bg-red-200 rounded-full h-2">
             <div
               className="bg-brand-blue h-2 rounded-full transition-all duration-500"
               style={{ width: `${Math.min(100, (totalPrecio / ENVIO_GRATIS_DESDE) * 100).toFixed(1)}%` }}
@@ -122,7 +136,9 @@ export default function CarritoPage() {
       {/* Resumen */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-brand-muted text-sm">Subtotal ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</span>
+          <span className="text-brand-muted text-sm">
+            Subtotal ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})
+          </span>
           <span className="font-semibold">${totalPrecio.toLocaleString('es-AR')}</span>
         </div>
         <div className="flex items-center justify-between pb-4 border-b border-brand-border mb-4">
@@ -133,10 +149,16 @@ export default function CarritoPage() {
           <span className="text-lg font-bold">Total</span>
           <span className="text-2xl font-bold text-brand-blue">${totalPrecio.toLocaleString('es-AR')}</span>
         </div>
-        <Link to="/checkout" className="btn-primary w-full text-center block py-3 text-base rounded-xl">
+        <Link
+          to="/checkout"
+          className="btn-primary w-full text-center block py-3 text-base rounded-xl"
+        >
           Continuar con el pedido →
         </Link>
-        <Link to="/catalogo" className="block text-center text-sm text-brand-muted hover:text-brand-text mt-3 transition-colors">
+        <Link
+          to="/catalogo"
+          className="block text-center text-sm text-brand-muted hover:text-brand-text mt-3 transition-colors"
+        >
           ← Seguir comprando
         </Link>
       </div>
