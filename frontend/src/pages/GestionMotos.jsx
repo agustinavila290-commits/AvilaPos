@@ -95,9 +95,34 @@ export default function GestionMotos() {
       </div>
 
       {importResult && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm">
-          <p className="font-semibold text-green-800">Import completado</p>
-          <p className="text-green-700">Creados: {importResult.creados} | Ya existían: {importResult.existentes} | Errores: {importResult.errores?.length || 0}</p>
+        <div className={`border rounded-xl p-4 text-sm ${importResult.total_errores > 0 && importResult.creados === 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+          <p className={`font-semibold mb-1 ${importResult.total_errores > 0 && importResult.creados === 0 ? 'text-red-800' : 'text-green-800'}`}>
+            Import completado
+          </p>
+          <p className="text-gray-700">
+            ✅ Creados: <strong>{importResult.creados}</strong> &nbsp;|&nbsp;
+            ⏭ Ya existían: <strong>{importResult.existentes}</strong> &nbsp;|&nbsp;
+            ❌ Errores: <strong>{importResult.total_errores || 0}</strong>
+          </p>
+          {importResult.columnas_detectadas && (
+            <p className="text-xs text-gray-500 mt-1">
+              Columnas usadas — marca: <em>{importResult.columnas_detectadas.marca}</em>,
+              modelo: <em>{importResult.columnas_detectadas.modelo}</em>,
+              año: <em>{importResult.columnas_detectadas.anio}</em>
+            </p>
+          )}
+          {importResult.errores?.length > 0 && (
+            <details className="mt-2">
+              <summary className="text-xs text-red-600 cursor-pointer">Ver primeros errores</summary>
+              <ul className="mt-1 space-y-0.5">
+                {importResult.errores.map((e, i) => (
+                  <li key={i} className="text-xs text-red-700 font-mono">
+                    Fila {e.fila}: {e.marca} / {e.modelo} / {e.anio} — {e.error}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       )}
 

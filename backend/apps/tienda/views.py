@@ -324,42 +324,103 @@ def moto_detail(request, moto_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def motos_importar_excel(request):
-    """Importa modelos de moto desde un Excel con columnas: marca, modelo, anio."""
-    from rest_framework.parsers import MultiPartParser
+    """
+    Importa modelos de moto desde un Excel.
+    Detecta columnas automáticamente — acepta variantes de nombres:
+      marca  → marca, brand
+      modelo → modelo, model, nombre
+      año    → año, anio, year, anio_modelo, año_modelo, anio_moto
+    """
     import openpyxl
+    import unicodedata
+
     archivo = request.FILES.get('file')
     if not archivo:
         return Response({'error': 'Enviá un archivo Excel en el campo "file"'}, status=400)
+
+    def normalizar_header(v):
+        """Minúsculas, sin tildes, sin espacios extras."""
+        s = str(v or '').strip().lower()
+        s = unicodedata.normalize('NFD', s)
+        s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+        return s
+
+    ALIAS_MARCA  = {'marca', 'brand', 'fabricante'}
+    ALIAS_MODELO = {'modelo', 'model', 'nombre_modelo', 'nombre'}
+    ALIAS_ANIO   = {'anio', 'ano', 'year', 'anio_modelo', 'ano_modelo',
+                    'anio_moto', 'ano_moto', 'año', 'año_modelo', 'año_moto'}
+
+    def find_col(headers_norm, aliases):
+        """Devuelve el índice de la primera columna cuyo header está en aliases."""
+        for idx, h in enumerate(headers_norm):
+            if h in aliases:
+                return idx
+        # Segunda pasada: buscar si algún alias es substring del header
+        for idx, h in enumerate(headers_norm):
+            for alias in aliases:
+                if alias in h and len(alias) >= 3:
+                    return idx
+        return None
+
+    def cell_val(row, idx):
+        if idx is None or idx >= len(row):
+            return ''
+        v = row[idx].value
+        return str(v).strip() if v is not None else ''
+
     try:
-        wb = openpyxl.load_workbook(archivo)
+        wb = openpyxl.load_workbook(archivo, data_only=True)
         ws = wb.active
-        headers = [str(c.value or '').strip().lower() for c in ws[1]]
-        def col(row, name):
-            try:
-                idx = next(i for i, h in enumerate(headers) if name in h)
-                return str(row[idx].value or '').strip()
-            except StopIteration:
-                return ''
+
+        raw_headers = [c.value for c in ws[1]]
+        headers_norm = [normalizar_header(h) for h in raw_headers]
+
+        idx_marca  = find_col(headers_norm, ALIAS_MARCA)
+        idx_modelo = find_col(headers_norm, ALIAS_MODELO)
+        idx_anio   = find_col(headers_norm, ALIAS_ANIO)
+
+        if idx_marca is None or idx_modelo is None or idx_anio is None:
+            faltantes = []
+            if idx_marca is None:  faltantes.append('marca')
+            if idx_modelo is None: faltantes.append('modelo')
+            if idx_anio is None:   faltantes.append('año/anio')
+            return Response({
+                'error': f'No se encontraron las columnas: {", ".join(faltantes)}. '
+                         f'Encabezados detectados: {[h for h in raw_headers if h]}',
+            }, status=400)
+
         creados, existentes, errores = 0, 0, []
         for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
-            marca = col(row, 'marca')
-            modelo = col(row, 'modelo')
-            anio_str = col(row, 'a')  # año / anio
+            marca  = cell_val(row, idx_marca)
+            modelo = cell_val(row, idx_modelo)
+            anio_str = cell_val(row, idx_anio)
+
             if not marca or not modelo:
                 continue
             try:
                 anio = int(float(anio_str)) if anio_str else 0
                 if not anio:
-                    raise ValueError('Año vacío')
+                    raise ValueError('Año vacío o no numérico')
                 obj, created = ModeloMoto.objects.get_or_create(
                     marca=marca, modelo=modelo, anio=anio,
                     defaults={'activo': True}
                 )
-                creados += int(created)
+                creados    += int(created)
                 existentes += int(not created)
             except Exception as e:
-                errores.append({'fila': i, 'error': str(e)})
-        return Response({'creados': creados, 'existentes': existentes, 'errores': errores})
+                errores.append({'fila': i, 'marca': marca, 'modelo': modelo, 'anio': anio_str, 'error': str(e)})
+
+        return Response({
+            'creados': creados,
+            'existentes': existentes,
+            'errores': errores[:20],  # máximo 20 errores en la respuesta
+            'total_errores': len(errores),
+            'columnas_detectadas': {
+                'marca':  raw_headers[idx_marca],
+                'modelo': raw_headers[idx_modelo],
+                'anio':   raw_headers[idx_anio],
+            },
+        })
     except Exception as e:
         return Response({'error': str(e)}, status=400)
 
