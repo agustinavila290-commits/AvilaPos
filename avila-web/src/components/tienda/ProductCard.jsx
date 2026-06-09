@@ -76,6 +76,19 @@ export default function ProductCard({ producto }) {
         <p className="text-sm font-semibold text-brand-text leading-snug line-clamp-2">
           {nombre}
         </p>
+        {/* Badges de motos compatibles */}
+        {producto.motos_compatibles?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {producto.motos_compatibles.slice(0, 3).map(m => (
+              <span key={m.id} className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 leading-none">
+                {m.marca} {m.modelo}
+              </span>
+            ))}
+            {producto.motos_compatibles.length > 3 && (
+              <span className="text-xs text-brand-muted">+{producto.motos_compatibles.length - 3}</span>
+            )}
+          </div>
+        )}
         <p className="text-brand-blue font-bold text-base mt-auto pt-2">
           ${precio.toLocaleString('es-AR')}
         </p>

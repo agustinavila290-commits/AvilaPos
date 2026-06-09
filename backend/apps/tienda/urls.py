@@ -23,6 +23,16 @@ urlpatterns = [
     # Admin POS (requiere auth de staff Django)
     path('admin/pedidos/', views.admin_pedidos_list),
     path('admin/pedidos/<int:pk>/', views.admin_pedido_detail),
-    # POS — compatibilidad por moto
+    # POS — compatibilidad por moto (lectura)
     path('modelos-moto/<int:moto_id>/productos/', views.productos_por_moto),
+    # Gestión de modelos de moto (admin POS)
+    path('admin/motos/', views.motos_crud),
+    path('admin/motos/importar/', views.motos_importar_excel),
+    path('admin/motos/<int:moto_id>/', views.moto_detail),
+    path('admin/motos/<int:moto_id>/toggle/', views.moto_toggle_activo),
+    # Compatibilidad producto ↔ moto
+    path('admin/productos/<int:producto_base_id>/motos/', views.producto_motos_compat),
+    path('admin/productos/<int:producto_base_id>/motos/asignar/', views.asignar_moto_producto),
+    path('admin/productos/<int:producto_base_id>/motos/<int:moto_id>/', views.quitar_moto_producto),
+    path('admin/motos/asignar-masivo/', views.asignar_moto_masivo),
 ]

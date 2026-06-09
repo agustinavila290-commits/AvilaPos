@@ -240,3 +240,42 @@ class VarianteProducto(models.Model):
         if self.costo is not None and self.costo >= 0:
             self.precio_tarjeta = (self.costo * Decimal('1.84')).quantize(Decimal('0.01'))
         super().save(*args, **kwargs)
+
+
+def _imagen_producto_upload(instance, filename):
+    """Ruta de upload para imágenes de producto."""
+    ext = os.path.splitext(filename)[1].lower() or '.jpg'
+    return f"productos/imagenes/{instance.producto_base_id}_{instance.pk or 'new'}{ext}"
+
+
+class ProductoImagen(models.Model):
+    """Galería de imágenes de un producto base."""
+    producto_base = models.ForeignKey(
+        ProductoBase,
+        on_delete=models.CASCADE,
+        related_name='imagenes',
+        verbose_name='Producto base',
+    )
+    imagen = models.ImageField(
+        upload_to='productos/imagenes/',
+        verbose_name='Imagen',
+    )
+    orden = models.PositiveIntegerField(default=0, verbose_name='Orden')
+    es_principal = models.BooleanField(default=False, verbose_name='Es principal')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Imagen de producto'
+        verbose_name_plural = 'Imágenes de productos'
+        ordering = ['orden', 'id']
+
+    def __str__(self):
+        return f"Imagen #{self.pk} de {self.producto_base}"
+
+    def save(self, *args, **kwargs):
+        if self.es_principal:
+            ProductoImagen.objects.filter(
+                producto_base=self.producto_base,
+                es_principal=True,
+            ).exclude(pk=self.pk).update(es_principal=False)
+        super().save(*args, **kwargs)

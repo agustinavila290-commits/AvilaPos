@@ -62,6 +62,8 @@ export default function PuntoVentaNuevo() {
   const [productosEncontrados, setProductosEncontrados] = useState([]);
   const [mostrarResultados, setMostrarResultados] = useState(false);
   const [indiceSeleccionadoBusqueda, setIndiceSeleccionadoBusqueda] = useState(0);
+  // Preview de producto
+  const [productoPreview, setProductoPreview] = useState(null);
 
   // Configuracion POS (cliente obligatorio, etc.)
   const [clienteObligatorio, setClienteObligatorio] = useState(true);
@@ -1277,7 +1279,7 @@ export default function PuntoVentaNuevo() {
           role="dialog"
           aria-label="Búsqueda de productos"
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[1280px] max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[1280px] max-h-[92vh] flex flex-col border border-slate-200 overflow-hidden" onMouseLeave={() => setProductoPreview(null)}>
             <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-blue-100">
               <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800">Búsqueda de Productos</h2>
               <button
@@ -1349,6 +1351,7 @@ export default function PuntoVentaNuevo() {
                         key={variante.id}
                         onClick={() => agregarItem(variante)}
                         onDoubleClick={() => agregarItem(variante)}
+                        onMouseEnter={() => setProductoPreview(variante)}
                         className={`border-b border-slate-100 cursor-pointer transition-colors ${
                           idx === indiceSeleccionadoBusqueda
                             ? 'bg-blue-100'
@@ -1393,6 +1396,46 @@ export default function PuntoVentaNuevo() {
               <kbd className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold shadow-sm">Enter</kbd> agregar seleccionado · <kbd className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold shadow-sm">↑↓</kbd> mover · <kbd className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold shadow-sm">ESC</kbd> cerrar
             </div>
           </div>
+
+          {/* Panel de preview — aparece al hacer hover sobre un resultado */}
+          {productoPreview && (
+            <div className="hidden lg:block w-56 bg-white rounded-xl border border-slate-200 shadow-lg p-4 flex-shrink-0 self-start mt-0">
+              {productoPreview.imagen_url
+                ? <img src={productoPreview.imagen_url} alt="" className="w-full aspect-square object-cover rounded-lg mb-3 border border-gray-100" />
+                : (
+                  <div className="w-full aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )
+              }
+              <p className="text-xs font-semibold text-gray-800 leading-snug mb-1">{productoPreview.nombre_completo || productoPreview.producto_nombre}</p>
+              <p className="text-xs text-gray-400 font-mono mb-2">{productoPreview.codigo}</p>
+              {productoPreview.imagen_url === undefined && (
+                <p className="text-xs text-orange-500 mb-2">Sin imagen</p>
+              )}
+              {/* Motos compatibles */}
+              {productoPreview.motos_compatibles?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">🏍️ Compatible con:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {productoPreview.motos_compatibles.slice(0, 6).map(m => (
+                      <span key={m.id} className="text-xs bg-blue-50 text-brand-blue border border-blue-200 rounded px-1.5 py-0.5">
+                        {m.marca} {m.modelo} {m.anio}
+                      </span>
+                    ))}
+                    {productoPreview.motos_compatibles.length > 6 && (
+                      <span className="text-xs text-gray-400">+{productoPreview.motos_compatibles.length - 6} más</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {(!productoPreview.motos_compatibles || productoPreview.motos_compatibles.length === 0) && (
+                <p className="text-xs text-gray-400">Sin compatibilidad asignada</p>
+              )}
+            </div>
+          )}
         </div>
       )}
       

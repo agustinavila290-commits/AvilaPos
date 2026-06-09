@@ -2,7 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import productosService from '../services/productosService';
 import { useAuth } from '../hooks/useAuth';
-import { getModelosMoto, getProductosPorMoto } from '../services/inventarioService';
+import { getModelosMoto, getProductosPorMoto, getMotosAdmin, asignarMotoMasivo } from '../services/inventarioService';
+
+const PLACEHOLDER_IMG = (
+  <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  </div>
+);
 
 const DEBOUNCE_MS = 200;
 
@@ -18,6 +27,15 @@ export default function Productos() {
   const [modelosMoto, setModelosMoto] = useState([]);
   const [motoSeleccionada, setMotoSeleccionada] = useState('');
   const [filtroPorMoto, setFiltroPorMoto] = useState(false);
+  const [subiendoImg, setSubiendoImg] = useState(null);
+  const camaraRef = useRef(null);
+  const camaraVarianteRef = useRef(null);
+  // Asignación masiva
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const [todasMotosAdmin, setTodasMotosAdmin] = useState([]);
+  const [modalAsignMoto, setModalAsignMoto] = useState(false);
+  const [motoParaAsignar, setMotoParaAsignar] = useState('');
+  const [asignandoMasivo, setAsignandoMasivo] = useState(false);
 
   const loadVariantes = useCallback(async () => {
     try {
@@ -56,6 +74,7 @@ export default function Productos() {
   useEffect(() => {
     loadVariantes();
     getModelosMoto().then(setModelosMoto).catch(() => {});
+    getMotosAdmin().then(setTodasMotosAdmin).catch(() => {});
   }, [loadVariantes]);
 
   const handleFiltrarPorMoto = async (motoId) => {
@@ -115,8 +134,58 @@ export default function Productos() {
     }
   };
 
-  const formatPrice = (price) => {
-    return `$${parseFloat(price).toFixed(2)}`;
+  const formatPrice = (price) => `$${parseFloat(price).toFixed(2)}`;
+
+  const handleCamaraClick = (e, varianteId, productoBaseId) => {
+    e.stopPropagation();
+    camaraVarianteRef.current = { varianteId, productoBaseId };
+    camaraRef.current?.click();
+  };
+
+  const toggleSeleccion = (e, varianteId, productoBaseId) => {
+    e.stopPropagation();
+    setSeleccionados(prev => {
+      const next = new Set(prev);
+      if (next.has(varianteId)) next.delete(varianteId);
+      else next.add(varianteId);
+      return next;
+    });
+  };
+
+  const handleAsignMasivoConfirm = async () => {
+    if (!motoParaAsignar || seleccionados.size === 0) return;
+    setAsignandoMasivo(true);
+    try {
+      const pbIds = variantes
+        .filter(v => seleccionados.has(v.id))
+        .map(v => v.producto_base)
+        .filter(Boolean);
+      const unique = [...new Set(pbIds)];
+      await asignarMotoMasivo(parseInt(motoParaAsignar), unique);
+      alert(`Moto asignada a ${unique.length} producto(s).`);
+      setSeleccionados(new Set());
+      setModalAsignMoto(false);
+      setMotoParaAsignar('');
+    } catch { alert('Error al asignar'); }
+    finally { setAsignandoMasivo(false); }
+  };
+
+  const handleCamaraChange = async (e) => {
+    const file = e.target.files?.[0];
+    const { varianteId, productoBaseId } = camaraVarianteRef.current || {};
+    if (!file || !productoBaseId) return;
+    setSubiendoImg(varianteId);
+    try {
+      await productosService.subirImagen(productoBaseId, file);
+      // Recargar para mostrar thumbnail actualizado
+      const fresh = await productosService.search(searchTerm || '', { page_size: 40 });
+      setVariantes(fresh.results || fresh);
+    } catch {
+      alert('Error al subir la imagen');
+    } finally {
+      setSubiendoImg(null);
+      if (camaraRef.current) camaraRef.current.value = '';
+    }
   };
 
   if (loading) {
@@ -129,6 +198,8 @@ export default function Productos() {
 
   return (
     <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+      {/* Input file oculto para subida rápida de imagen desde la lista */}
+      <input ref={camaraRef} type="file" accept="image/*" className="hidden" onChange={handleCamaraChange} />
       {/* Header - Soft UI */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 lg:gap-4">
         <div>
@@ -152,6 +223,22 @@ export default function Productos() {
           </div>
         )}
       </div>
+
+      {/* Barra de asignación masiva */}
+      {seleccionados.size > 0 && isAdmin() && (
+        <div className="bg-brand-blue text-white rounded-xl p-3 flex items-center gap-3 flex-wrap">
+          <span className="font-semibold text-sm">{seleccionados.size} producto(s) seleccionado(s)</span>
+          <button
+            onClick={() => setModalAsignMoto(true)}
+            className="px-3 py-1.5 bg-white text-brand-blue text-sm font-bold rounded-lg hover:bg-blue-50"
+          >
+            🏍️ Asignar moto compatible
+          </button>
+          <button onClick={() => setSeleccionados(new Set())} className="text-blue-200 text-sm underline ml-auto">
+            Cancelar selección
+          </button>
+        </div>
+      )}
 
       {/* Filtro por moto */}
       {modelosMoto.length > 0 && (
@@ -241,6 +328,8 @@ export default function Productos() {
             <table className="min-w-full">
               <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
                 <tr>
+                  {isAdmin() && <th className="px-3 py-3 w-8" />}
+                  <th className="px-3 py-3 text-left text-xs font-bold text-gray-700 uppercase w-12">Img</th>
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">Código</th>
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">Producto</th>
                   <th className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-bold text-gray-700 uppercase">Variante</th>
@@ -259,11 +348,44 @@ export default function Productos() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {variantes.map((variante) => (
-                  <tr 
-                    key={variante.id} 
+                  <tr
+                    key={variante.id}
                     onClick={() => navigate(`/productos/${variante.id}`)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${seleccionados.has(variante.id) ? 'bg-blue-50' : ''}`}
                   >
+                    {/* Checkbox selección masiva */}
+                    {isAdmin() && (
+                      <td className="px-2 py-2 w-8" onClick={e => toggleSeleccion(e, variante.id, variante.producto_base)}>
+                        <input
+                          type="checkbox"
+                          checked={seleccionados.has(variante.id)}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+                        />
+                      </td>
+                    )}
+                    {/* Thumbnail + cámara rápida */}
+                    <td className="px-2 py-2 w-12" onClick={e => e.stopPropagation()}>
+                      <div className="relative group w-10 h-10">
+                        {variante.imagen_url
+                          ? <img src={variante.imagen_url} alt="" className="w-10 h-10 object-cover rounded" />
+                          : PLACEHOLDER_IMG
+                        }
+                        {isAdmin() && (
+                          <button
+                            onClick={e => handleCamaraClick(e, variante.id, variante.producto_base)}
+                            disabled={subiendoImg === variante.id}
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded flex items-center justify-center transition-opacity"
+                            title="Subir imagen"
+                          >
+                            {subiendoImg === variante.id
+                              ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              : <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            }
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-bold text-gray-800 truncate">
                       {variante.codigo}
                     </td>
@@ -327,6 +449,37 @@ export default function Productos() {
           </div>
         )}
       </div>
+      {/* Modal asignación masiva de moto */}
+      {modalAsignMoto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-5 w-full max-w-sm shadow-2xl">
+            <h3 className="font-bold text-gray-800 mb-4">Asignar moto compatible</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Seleccioná la moto a asignar a los <strong>{seleccionados.size}</strong> productos seleccionados:
+            </p>
+            <select
+              value={motoParaAsignar}
+              onChange={e => setMotoParaAsignar(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue mb-4"
+            >
+              <option value="">Seleccioná una moto...</option>
+              {todasMotosAdmin.filter(m => m.activo).map(m => (
+                <option key={m.id} value={m.id}>{m.marca} {m.modelo} {m.anio}</option>
+              ))}
+            </select>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => { setModalAsignMoto(false); setMotoParaAsignar(''); }} className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm">Cancelar</button>
+              <button
+                onClick={handleAsignMasivoConfirm}
+                disabled={!motoParaAsignar || asignandoMasivo}
+                className="bg-brand-blue text-white px-4 py-2 rounded-lg text-sm font-semibold hover:brightness-110 disabled:opacity-50"
+              >
+                {asignandoMasivo ? 'Asignando...' : 'Asignar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

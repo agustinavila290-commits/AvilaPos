@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import JsBarcode from 'jsbarcode';
 import productosService from '../services/productosService';
 import { useAuth } from '../hooks/useAuth';
+import {
+  getMotosAdmin, getMotosProducto, asignarMotoProducto, quitarMotoProducto
+} from '../services/inventarioService';
 
 export default function ProductoDetalle() {
   const { id } = useParams();
@@ -13,6 +16,17 @@ export default function ProductoDetalle() {
   const [editando, setEditando] = useState(false);
   const MARGEN_DEFAULT = { mostrador: 75, web: 60, tarjeta: 84 };
   const [formData, setFormData] = useState({});
+
+  // Imágenes
+  const [imagenes, setImagenes] = useState([]);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Compatibilidad motos
+  const [motosCompat, setMotosCompat] = useState([]);
+  const [todasMotos, setTodasMotos] = useState([]);
+  const [motoSearch, setMotoSearch] = useState('');
+  const [asignandoMoto, setAsignandoMoto] = useState(false);
 
   useEffect(() => {
     if (id === 'nuevo' || id === 'importar' || !/^\d+$/.test(id)) {
@@ -27,6 +41,16 @@ export default function ProductoDetalle() {
       setLoading(true);
       const data = await productosService.getVariante(id);
       setProducto(data);
+      // Cargar imágenes y compatibilidad del producto base
+      if (data.producto_base) {
+        productosService.getImagenes(data.producto_base)
+          .then(imgs => setImagenes(Array.isArray(imgs) ? imgs : []))
+          .catch(() => {});
+        getMotosProducto(data.producto_base)
+          .then(setMotosCompat)
+          .catch(() => {});
+      }
+      getMotosAdmin().then(setTodasMotos).catch(() => {});
       const costo = parseFloat(data.costo) || 0;
       const pm = parseFloat(data.precio_mostrador);
       const pw = parseFloat(data.precio_web);
@@ -84,6 +108,55 @@ export default function ProductoDetalle() {
       alert('Error al eliminar el producto');
     }
   };
+
+  const handleSubirImagen = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !producto?.producto_base) return;
+    setSubiendoImagen(true);
+    try {
+      const nueva = await productosService.subirImagen(producto.producto_base, file);
+      setImagenes(prev => [...prev, nueva]);
+    } catch {
+      alert('Error al subir la imagen');
+    } finally {
+      setSubiendoImagen(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleEliminarImagen = async (imgId) => {
+    if (!confirm('¿Eliminar esta imagen?')) return;
+    await productosService.eliminarImagen(producto.producto_base, imgId);
+    setImagenes(prev => prev.filter(i => i.id !== imgId));
+  };
+
+  const handleSetPrincipal = async (imgId) => {
+    await productosService.setPrincipalImagen(producto.producto_base, imgId);
+    setImagenes(prev => prev.map(i => ({ ...i, es_principal: i.id === imgId })));
+  };
+
+  const handleAsignarMoto = async (motoId) => {
+    if (!producto?.producto_base) return;
+    setAsignandoMoto(true);
+    try {
+      const res = await asignarMotoProducto(producto.producto_base, motoId);
+      setMotosCompat(prev => [...prev, res.moto]);
+      setMotoSearch('');
+    } catch { alert('Error al asignar la moto'); }
+    finally { setAsignandoMoto(false); }
+  };
+
+  const handleQuitarMoto = async (motoId) => {
+    if (!producto?.producto_base) return;
+    await quitarMotoProducto(producto.producto_base, motoId);
+    setMotosCompat(prev => prev.filter(m => m.id !== motoId));
+  };
+
+  const motosAsignadasIds = new Set(motosCompat.map(m => m.id));
+  const motosFiltradas = todasMotos.filter(m =>
+    !motosAsignadasIds.has(m.id) &&
+    `${m.marca} ${m.modelo} ${m.anio}`.toLowerCase().includes(motoSearch.toLowerCase())
+  );
 
   const imprimirCodigoBarras = (codigo) => {
     const code = String(codigo || '').trim();
@@ -449,6 +522,137 @@ export default function ProductoDetalle() {
                 </dd>
               </div>
             </dl>
+          </div>
+
+          {/* Imágenes del producto */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Imágenes</h2>
+              {isAdmin() && (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSubirImagen}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={subiendoImagen}
+                    className="px-3 py-1.5 bg-brand-blue text-white rounded-lg text-sm font-semibold hover:brightness-110 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {subiendoImagen ? 'Subiendo...' : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Agregar imagen
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {imagenes.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm">Sin imágenes. {isAdmin() ? 'Hacé click en "Agregar imagen" para subir la primera.' : ''}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                {imagenes.map(img => (
+                  <div key={img.id} className="relative group">
+                    <div className={`aspect-square rounded-lg overflow-hidden border-2 ${img.es_principal ? 'border-brand-blue' : 'border-gray-200'}`}>
+                      <img
+                        src={img.url}
+                        alt="Imagen del producto"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {img.es_principal && (
+                      <span className="absolute top-1 left-1 bg-brand-blue text-white text-xs px-1 rounded font-bold">★</span>
+                    )}
+                    {isAdmin() && (
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                        {!img.es_principal && (
+                          <button
+                            onClick={() => handleSetPrincipal(img.id)}
+                            className="text-white text-xs bg-brand-blue px-2 py-1 rounded hover:brightness-110"
+                            title="Marcar como principal"
+                          >
+                            ★
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleEliminarImagen(img.id)}
+                          className="text-white text-xs bg-red-600 px-2 py-1 rounded hover:bg-red-700"
+                          title="Eliminar"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Compatibilidad de motos */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">🏍️ Motos compatibles</h2>
+              <span className="text-xs text-gray-400">{motosCompat.length} asignadas</span>
+            </div>
+
+            {isAdmin() && (
+              <div className="mb-4 relative">
+                <input
+                  type="search"
+                  placeholder="Buscar moto para agregar..."
+                  value={motoSearch}
+                  onChange={e => setMotoSearch(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+                {motoSearch.trim() && motosFiltradas.length > 0 && (
+                  <div className="absolute z-20 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 w-full max-h-48 overflow-y-auto">
+                    {motosFiltradas.slice(0, 20).map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => handleAsignarMoto(m.id)}
+                        disabled={asignandoMoto}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b last:border-b-0 disabled:opacity-50"
+                      >
+                        {m.marca} {m.modelo} {m.anio}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {motosCompat.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">Sin motos asignadas.{isAdmin() ? ' Buscá arriba para agregar.' : ''}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {motosCompat.map(m => (
+                  <span key={m.id} className="inline-flex items-center gap-1 bg-blue-50 text-brand-blue border border-blue-200 rounded-full px-3 py-1 text-xs font-semibold">
+                    {m.marca} {m.modelo} {m.anio}
+                    {isAdmin() && (
+                      <button
+                        onClick={() => handleQuitarMoto(m.id)}
+                        className="ml-1 text-blue-400 hover:text-red-500 text-sm leading-none"
+                        title="Quitar"
+                      >×</button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Precios y Márgenes */}

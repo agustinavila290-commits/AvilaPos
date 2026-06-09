@@ -38,7 +38,19 @@ def _get_usuario_venta_web():
     ).order_by('id').first()
 
 
-def _variante_a_dict(v, stock_cantidad=0, incluir_marca_cat=True):
+def _get_imagen_url(producto_base, request=None):
+    """Devuelve la URL de la imagen principal del producto (galería o campo legacy)."""
+    if not producto_base:
+        return None
+    img = producto_base.imagenes.filter(es_principal=True).first() or producto_base.imagenes.first()
+    if img and img.imagen:
+        return request.build_absolute_uri(img.imagen.url) if request else img.imagen.url
+    if producto_base.imagen:
+        return request.build_absolute_uri(producto_base.imagen.url) if request else producto_base.imagen.url
+    return None
+
+
+def _variante_a_dict(v, stock_cantidad=0, incluir_marca_cat=True, request=None):
     """Convierte variante a dict para API tienda."""
     data = {
         'id': v.id,
@@ -48,15 +60,20 @@ def _variante_a_dict(v, stock_cantidad=0, incluir_marca_cat=True):
         'stock': stock_cantidad,
     }
     if incluir_marca_cat:
-        data['marca'] = v.producto_base.marca.nombre if v.producto_base else ''
-        data['marca_id'] = v.producto_base.marca_id if v.producto_base else None
-        data['categoria'] = v.producto_base.categoria.nombre if v.producto_base else ''
-        data['categoria_id'] = v.producto_base.categoria_id if v.producto_base else None
-        data['descripcion'] = (v.producto_base.descripcion or '')[:300]
-        if v.producto_base.imagen:
-            data['imagen_url'] = v.producto_base.imagen.url
+        pb = v.producto_base
+        data['marca'] = pb.marca.nombre if pb else ''
+        data['marca_id'] = pb.marca_id if pb else None
+        data['categoria'] = pb.categoria.nombre if pb else ''
+        data['categoria_id'] = pb.categoria_id if pb else None
+        data['descripcion'] = (pb.descripcion or '')[:300] if pb else ''
+        data['imagen_url'] = _get_imagen_url(pb, request)
+        # Motos compatibles (ids para filtros frontend)
+        if pb:
+            data['motos_compatibles'] = list(
+                pb.modelos_compatibles.filter(activo=True).values('id', 'marca', 'modelo', 'anio')
+            )
         else:
-            data['imagen_url'] = None
+            data['motos_compatibles'] = []
     return data
 
 
@@ -74,15 +91,15 @@ def productos_list(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
 
+    from apps.productos.models import ProductoImagen
     qs = VarianteProducto.objects.filter(
         activo=True,
         producto_base__activo=True,
         precio_web__gt=0,
     ).select_related('producto_base', 'producto_base__marca', 'producto_base__categoria').prefetch_related(
-        db_models.Prefetch(
-            'stocks',
-            queryset=Stock.objects.filter(deposito=deposito)
-        )
+        db_models.Prefetch('stocks', queryset=Stock.objects.filter(deposito=deposito)),
+        db_models.Prefetch('producto_base__imagenes', queryset=ProductoImagen.objects.order_by('orden', 'id')),
+        'producto_base__modelos_compatibles',
     )
 
     categoria = request.query_params.get('categoria')
@@ -125,7 +142,7 @@ def productos_list(request):
     for v in page.object_list:
         stock_qs = v.stocks.filter(deposito=deposito)
         cantidad = stock_qs.first().cantidad if stock_qs.exists() else 0
-        items.append(_variante_a_dict(v, cantidad))
+        items.append(_variante_a_dict(v, cantidad, request=request))
 
     return Response({
         'count': paginator.count,
@@ -140,6 +157,7 @@ def productos_list(request):
 def producto_detail(request, pk):
     """Detalle de una variante (público)."""
     deposito = _get_deposito_principal()
+    from apps.productos.models import ProductoImagen
     try:
         v = VarianteProducto.objects.select_related(
             'producto_base', 'producto_base__marca', 'producto_base__categoria'
@@ -147,15 +165,22 @@ def producto_detail(request, pk):
             db_models.Prefetch(
                 'stocks',
                 queryset=Stock.objects.filter(deposito=deposito) if deposito else Stock.objects.none()
-            )
+            ),
+            db_models.Prefetch('producto_base__imagenes', queryset=ProductoImagen.objects.order_by('orden', 'id')),
+            'producto_base__modelos_compatibles',
         ).get(pk=pk, activo=True, producto_base__activo=True)
     except VarianteProducto.DoesNotExist:
         return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
     stock_qs = v.stocks.filter(deposito=deposito)
     cantidad = stock_qs.first().cantidad if stock_qs.exists() else 0
-    data = _variante_a_dict(v, cantidad)
+    data = _variante_a_dict(v, cantidad, request=request)
     data['descripcion'] = v.producto_base.descripcion or ''
+    # Todas las imágenes de la galería
+    data['imagenes'] = [
+        {'id': img.id, 'url': request.build_absolute_uri(img.imagen.url) if img.imagen else None, 'es_principal': img.es_principal}
+        for img in v.producto_base.imagenes.all()
+    ]
     return Response(data)
 
 
@@ -238,6 +263,189 @@ def productos_por_moto(request, moto_id):
             })
 
     return Response({'moto': str(moto), 'count': len(data), 'results': data})
+
+
+# ── Gestión de modelos de moto (admin POS) ────────────────────────────────────
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def motos_crud(request):
+    """GET: lista todos. POST: crea nuevo modelo de moto."""
+    if request.method == 'GET':
+        qs = ModeloMoto.objects.order_by('marca', 'modelo', 'anio')
+        activo = request.query_params.get('activo')
+        if activo is not None:
+            qs = qs.filter(activo=activo.lower() in ('true', '1'))
+        data = [{'id': m.id, 'marca': m.marca, 'modelo': m.modelo, 'anio': m.anio, 'activo': m.activo} for m in qs]
+        return Response(data)
+    # POST
+    d = request.data
+    marca = (d.get('marca') or '').strip()
+    modelo = (d.get('modelo') or '').strip()
+    try:
+        anio = int(d.get('anio') or 0)
+    except (ValueError, TypeError):
+        return Response({'error': 'Año inválido'}, status=400)
+    if not marca or not modelo or not anio:
+        return Response({'error': 'marca, modelo y anio son requeridos'}, status=400)
+    obj, created = ModeloMoto.objects.get_or_create(
+        marca=marca, modelo=modelo, anio=anio,
+        defaults={'activo': True}
+    )
+    return Response({'id': obj.id, 'marca': obj.marca, 'modelo': obj.modelo, 'anio': obj.anio, 'activo': obj.activo, 'created': created},
+                    status=201 if created else 200)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def moto_detail(request, moto_id):
+    """PATCH: actualiza. DELETE: elimina."""
+    try:
+        moto = ModeloMoto.objects.get(id=moto_id)
+    except ModeloMoto.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+    if request.method == 'DELETE':
+        moto.delete()
+        return Response(status=204)
+    # PATCH
+    d = request.data
+    if 'marca' in d:
+        moto.marca = d['marca'].strip()
+    if 'modelo' in d:
+        moto.modelo = d['modelo'].strip()
+    if 'anio' in d:
+        moto.anio = int(d['anio'])
+    if 'activo' in d:
+        moto.activo = bool(d['activo'])
+    moto.save()
+    return Response({'id': moto.id, 'marca': moto.marca, 'modelo': moto.modelo, 'anio': moto.anio, 'activo': moto.activo})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def motos_importar_excel(request):
+    """Importa modelos de moto desde un Excel con columnas: marca, modelo, anio."""
+    from rest_framework.parsers import MultiPartParser
+    import openpyxl
+    archivo = request.FILES.get('file')
+    if not archivo:
+        return Response({'error': 'Enviá un archivo Excel en el campo "file"'}, status=400)
+    try:
+        wb = openpyxl.load_workbook(archivo)
+        ws = wb.active
+        headers = [str(c.value or '').strip().lower() for c in ws[1]]
+        def col(row, name):
+            try:
+                idx = next(i for i, h in enumerate(headers) if name in h)
+                return str(row[idx].value or '').strip()
+            except StopIteration:
+                return ''
+        creados, existentes, errores = 0, 0, []
+        for i, row in enumerate(ws.iter_rows(min_row=2), start=2):
+            marca = col(row, 'marca')
+            modelo = col(row, 'modelo')
+            anio_str = col(row, 'a')  # año / anio
+            if not marca or not modelo:
+                continue
+            try:
+                anio = int(float(anio_str)) if anio_str else 0
+                if not anio:
+                    raise ValueError('Año vacío')
+                obj, created = ModeloMoto.objects.get_or_create(
+                    marca=marca, modelo=modelo, anio=anio,
+                    defaults={'activo': True}
+                )
+                creados += int(created)
+                existentes += int(not created)
+            except Exception as e:
+                errores.append({'fila': i, 'error': str(e)})
+        return Response({'creados': creados, 'existentes': existentes, 'errores': errores})
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+
+# ── Asignación de compatibilidad (admin POS) ──────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def producto_motos_compat(request, producto_base_id):
+    """Lista las motos compatibles de un ProductoBase."""
+    from apps.productos.models import ProductoBase
+    try:
+        pb = ProductoBase.objects.get(id=producto_base_id)
+    except ProductoBase.DoesNotExist:
+        return Response({'error': 'Producto no encontrado'}, status=404)
+    motos = pb.modelos_compatibles.filter(activo=True).order_by('marca', 'modelo', 'anio')
+    return Response([{'id': m.id, 'marca': m.marca, 'modelo': m.modelo, 'anio': m.anio} for m in motos])
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def asignar_moto_producto(request, producto_base_id):
+    """Agrega una moto compatible a un ProductoBase. Body: {moto_id}"""
+    from apps.productos.models import ProductoBase
+    try:
+        pb = ProductoBase.objects.get(id=producto_base_id)
+    except ProductoBase.DoesNotExist:
+        return Response({'error': 'Producto no encontrado'}, status=404)
+    moto_id = request.data.get('moto_id')
+    if not moto_id:
+        return Response({'error': 'moto_id es requerido'}, status=400)
+    try:
+        moto = ModeloMoto.objects.get(id=moto_id)
+    except ModeloMoto.DoesNotExist:
+        return Response({'error': 'Moto no encontrada'}, status=404)
+    pb.modelos_compatibles.add(moto)
+    return Response({'ok': True, 'moto': {'id': moto.id, 'marca': moto.marca, 'modelo': moto.modelo, 'anio': moto.anio}})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def quitar_moto_producto(request, producto_base_id, moto_id):
+    """Quita una moto compatible de un ProductoBase."""
+    from apps.productos.models import ProductoBase
+    try:
+        pb = ProductoBase.objects.get(id=producto_base_id)
+        moto = ModeloMoto.objects.get(id=moto_id)
+    except (ProductoBase.DoesNotExist, ModeloMoto.DoesNotExist):
+        return Response({'error': 'No encontrado'}, status=404)
+    pb.modelos_compatibles.remove(moto)
+    return Response(status=204)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def asignar_moto_masivo(request):
+    """
+    Asigna una moto a múltiples productos base de una vez.
+    Body: {moto_id, producto_base_ids: [1,2,3,...]}
+    """
+    from apps.productos.models import ProductoBase
+    moto_id = request.data.get('moto_id')
+    ids = request.data.get('producto_base_ids', [])
+    if not moto_id or not ids:
+        return Response({'error': 'moto_id y producto_base_ids son requeridos'}, status=400)
+    try:
+        moto = ModeloMoto.objects.get(id=moto_id)
+    except ModeloMoto.DoesNotExist:
+        return Response({'error': 'Moto no encontrada'}, status=404)
+    productos = ProductoBase.objects.filter(id__in=ids)
+    for pb in productos:
+        pb.modelos_compatibles.add(moto)
+    return Response({'ok': True, 'asignados': productos.count(), 'moto': str(moto)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def moto_toggle_activo(request, moto_id):
+    """Activa/desactiva un modelo de moto."""
+    try:
+        moto = ModeloMoto.objects.get(id=moto_id)
+    except ModeloMoto.DoesNotExist:
+        return Response({'error': 'No encontrado'}, status=404)
+    moto.activo = not moto.activo
+    moto.save()
+    return Response({'id': moto.id, 'activo': moto.activo})
 
 
 @api_view(['POST'])

@@ -41,6 +41,7 @@ import AjusteMasivo from './pages/AjusteMasivo'
 import OrdenesCompra from './pages/OrdenesCompra'
 import NuevaOrdenCompra from './pages/NuevaOrdenCompra'
 import OrdenCompraDetalle from './pages/OrdenCompraDetalle'
+import GestionMotos from './pages/GestionMotos'
 
 const routerFuture = {
   v7_startTransition: true,
@@ -268,6 +269,9 @@ function App() {
           <Route path="/compras/ordenes" element={<ProtectedRoute requireAdmin><Layout><OrdenesCompra /></Layout></ProtectedRoute>} />
           <Route path="/compras/ordenes/nueva" element={<ProtectedRoute requireAdmin><Layout><NuevaOrdenCompra /></Layout></ProtectedRoute>} />
           <Route path="/compras/ordenes/:id" element={<ProtectedRoute requireAdmin><Layout><OrdenCompraDetalle /></Layout></ProtectedRoute>} />
+
+          {/* Gestión de motos */}
+          <Route path="/motos" element={<ProtectedRoute requireAdmin><Layout><GestionMotos /></Layout></ProtectedRoute>} />
           
           <Route
             path="/compras/:id"

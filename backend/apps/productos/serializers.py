@@ -1,7 +1,22 @@
 from decimal import Decimal
 from django.db import transaction
 from rest_framework import serializers
-from .models import Marca, Categoria, ProductoBase, VarianteProducto
+from .models import Marca, Categoria, ProductoBase, VarianteProducto, ProductoImagen
+
+
+class ProductoImagenSerializer(serializers.ModelSerializer):
+    """Serializer para imágenes de producto."""
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductoImagen
+        fields = ['id', 'url', 'orden', 'es_principal', 'fecha_creacion']
+
+    def get_url(self, obj):
+        request = self.context.get('request')
+        if obj.imagen:
+            return request.build_absolute_uri(obj.imagen.url) if request else obj.imagen.url
+        return None
 
 
 class MarcaSerializer(serializers.ModelSerializer):
@@ -29,6 +44,7 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
     marca_nombre = serializers.CharField(source='producto_base.marca.nombre', read_only=True)
     categoria_nombre = serializers.CharField(source='producto_base.categoria.nombre', read_only=True)
     stock_actual = serializers.SerializerMethodField()
+    imagen_url = serializers.SerializerMethodField()
 
     class Meta:
         model = VarianteProducto
@@ -38,20 +54,30 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
             'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
             'margen_porcentaje', 'margen_monto', 'nombre_completo',
             'stock_actual', 'stock_minimo', 'punto_reorden',
-            'activo', 'fecha_creacion', 'fecha_actualizacion'
+            'imagen_url', 'activo', 'fecha_creacion', 'fecha_actualizacion'
         ]
         read_only_fields = ['id', 'fecha_creacion', 'fecha_actualizacion']
-    
+
     def get_stock_actual(self, obj):
-        """Obtiene el stock actual de la variante"""
         try:
             from apps.inventario.models import Stock
-            # Sumar el stock de todos los depósitos
             stocks = Stock.objects.filter(variante=obj, deposito__activo=True)
-            total = sum(stock.cantidad for stock in stocks)
-            return total
-        except Exception as e:
+            return sum(stock.cantidad for stock in stocks)
+        except Exception:
             return 0
+
+    def get_imagen_url(self, obj):
+        pb = obj.producto_base
+        if not pb:
+            return None
+        img = pb.imagenes.filter(es_principal=True).first() or pb.imagenes.first()
+        if img:
+            request = self.context.get('request')
+            return request.build_absolute_uri(img.imagen.url) if request else img.imagen.url
+        if pb.imagen:
+            request = self.context.get('request')
+            return request.build_absolute_uri(pb.imagen.url) if request else pb.imagen.url
+        return None
 
 
 class VarianteProductoCreateSerializer(serializers.ModelSerializer):
@@ -90,19 +116,30 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
     categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
     variantes = VarianteProductoSerializer(many=True, read_only=True)
     cantidad_variantes = serializers.SerializerMethodField()
-    
+    imagenes = ProductoImagenSerializer(many=True, read_only=True)
+    imagen_principal_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductoBase
         fields = [
             'id', 'nombre', 'descripcion', 'marca', 'marca_nombre',
             'categoria', 'categoria_nombre', 'imagen', 'activo',
-            'variantes', 'cantidad_variantes', 'fecha_creacion'
+            'variantes', 'cantidad_variantes', 'imagenes', 'imagen_principal_url',
+            'fecha_creacion'
         ]
         read_only_fields = ['id', 'fecha_creacion']
-    
+
     def get_cantidad_variantes(self, obj):
-        """Retorna la cantidad de variantes del producto"""
         return obj.variantes.count()
+
+    def get_imagen_principal_url(self, obj):
+        img = obj.imagenes.filter(es_principal=True).first() or obj.imagenes.first()
+        if img:
+            request = self.context.get('request')
+            return request.build_absolute_uri(img.imagen.url) if request else img.imagen.url
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 
 class ProductoBaseCreateSerializer(serializers.ModelSerializer):
@@ -189,7 +226,7 @@ class VarianteListSerializer(serializers.ModelSerializer):
     nombre_completo = serializers.ReadOnlyField()
     margen_porcentaje = serializers.ReadOnlyField()
     stock_actual = serializers.SerializerMethodField()
-    
+    imagen_url = serializers.SerializerMethodField()
     proveedor_habitual_nombre = serializers.SerializerMethodField()
 
     def get_proveedor_habitual_nombre(self, obj):
@@ -201,15 +238,14 @@ class VarianteListSerializer(serializers.ModelSerializer):
     class Meta:
         model = VarianteProducto
         fields = [
-            'id', 'codigo', 'nombre_variante', 'nombre_completo',
+            'id', 'producto_base', 'codigo', 'nombre_variante', 'nombre_completo',
             'producto_nombre', 'marca_nombre', 'categoria_nombre',
             'costo', 'precio_mostrador', 'precio_web', 'precio_tarjeta',
             'margen_porcentaje', 'stock_actual', 'stock_minimo', 'punto_reorden',
-            'proveedor_habitual', 'proveedor_habitual_nombre', 'activo'
+            'imagen_url', 'proveedor_habitual', 'proveedor_habitual_nombre', 'activo'
         ]
-    
+
     def get_stock_actual(self, obj):
-        """Obtiene el stock actual (usa anotación si existe para evitar N+1 en listado)"""
         if hasattr(obj, 'stock_actual_anno'):
             return obj.stock_actual_anno
         try:
@@ -218,3 +254,15 @@ class VarianteListSerializer(serializers.ModelSerializer):
             return sum(stock.cantidad for stock in stocks)
         except Exception:
             return 0
+
+    def get_imagen_url(self, obj):
+        pb = obj.producto_base
+        if not pb:
+            return None
+        img = pb.imagenes.filter(es_principal=True).first() or pb.imagenes.first()
+        if img:
+            request = self.context.get('request')
+            return request.build_absolute_uri(img.imagen.url) if request else img.imagen.url
+        if pb.imagen:
+            return pb.imagen.url
+        return None

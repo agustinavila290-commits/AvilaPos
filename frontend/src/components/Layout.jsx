@@ -60,6 +60,7 @@ export default function Layout({ children }) {
     { path: '/cuenta-corriente', label: 'Cuenta Corriente', icon: <IconCuentaCorriente />, admin: false },
     { path: '/compras', label: 'Compras', icon: <IconCompras />, admin: true },
     { path: '/compras/ordenes', label: 'Órdenes OC', icon: <IconOrdenes />, admin: true },
+    { path: '/motos', label: '🏍️ Motos', icon: <IconOrdenes />, admin: true },
     { path: '/transferencias', label: 'Transferencias', icon: <IconTransferencias />, admin: true },
     { path: '/inventario/avanzado', label: 'Inv. Avanzado', icon: <IconAnalisis />, admin: true },
     { path: '/reportes', label: 'Reportes', icon: <IconReportes />, admin: true },

@@ -7,13 +7,14 @@ from django.db.models.functions import Coalesce
 from django.db import transaction
 import openpyxl
 
-from .models import Marca, Categoria, ProductoBase, VarianteProducto
+from rest_framework.parsers import MultiPartParser, FormParser
+from .models import Marca, Categoria, ProductoBase, VarianteProducto, ProductoImagen
 from .serializers import (
     MarcaSerializer, CategoriaSerializer,
     ProductoBaseSerializer, ProductoBaseCreateSerializer,
     VarianteProductoSerializer, VarianteProductoCreateSerializer,
     ProductoConVariantesSerializer, ImportacionExcelSerializer,
-    VarianteListSerializer
+    VarianteListSerializer, ProductoImagenSerializer
 )
 from .search_utils import search_term_variants, search_words
 from .excel_utils import get_excel_header_map, cell_str, cell_number, cell_int, normalize_header, EXCEL_REQUIRED_COLUMNS, EXCEL_OPTIONAL_COLUMNS
@@ -126,6 +127,133 @@ class ProductoBaseViewSet(viewsets.ModelViewSet):
                 {'detail': str(e), 'error_type': type(e).__name__},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    # ── Endpoints de imágenes ─────────────────────────────────────────
+
+    @action(
+        detail=True, methods=['get', 'post'], url_path='imagenes',
+        permission_classes=[IsAuthenticated, IsAdministrador],
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def imagenes(self, request, pk=None):
+        """GET: lista imágenes. POST: sube una imagen nueva."""
+        producto = self.get_object()
+        if request.method == 'GET':
+            imgs = producto.imagenes.all()
+            return Response(ProductoImagenSerializer(imgs, many=True, context={'request': request}).data)
+
+        archivo = request.FILES.get('imagen')
+        if not archivo:
+            return Response({'error': 'Enviá una imagen en el campo "imagen"'}, status=400)
+
+        from apps.compras.image_utils import comprimir_imagen_factura
+        comprimida = comprimir_imagen_factura(archivo, calidad=82, ancho_max=1400)
+        archivo_final = comprimida or archivo
+
+        es_primera = not producto.imagenes.exists()
+        img = ProductoImagen.objects.create(
+            producto_base=producto,
+            imagen=archivo_final,
+            orden=producto.imagenes.count(),
+            es_principal=es_primera,
+        )
+        return Response(ProductoImagenSerializer(img, context={'request': request}).data, status=201)
+
+    @action(
+        detail=True, methods=['delete'], url_path=r'imagenes/(?P<img_id>\d+)',
+        permission_classes=[IsAuthenticated, IsAdministrador],
+    )
+    def eliminar_imagen(self, request, pk=None, img_id=None):
+        """Elimina una imagen del producto."""
+        producto = self.get_object()
+        try:
+            img = producto.imagenes.get(id=img_id)
+        except ProductoImagen.DoesNotExist:
+            return Response({'error': 'Imagen no encontrada'}, status=404)
+        era_principal = img.es_principal
+        if img.imagen:
+            img.imagen.delete(save=False)
+        img.delete()
+        if era_principal:
+            primera = producto.imagenes.first()
+            if primera:
+                primera.es_principal = True
+                primera.save()
+        return Response(status=204)
+
+    @action(
+        detail=True, methods=['post'], url_path=r'imagenes/(?P<img_id>\d+)/principal',
+        permission_classes=[IsAuthenticated, IsAdministrador],
+    )
+    def set_imagen_principal(self, request, pk=None, img_id=None):
+        """Marca una imagen como principal."""
+        producto = self.get_object()
+        try:
+            img = producto.imagenes.get(id=img_id)
+        except ProductoImagen.DoesNotExist:
+            return Response({'error': 'Imagen no encontrada'}, status=404)
+        producto.imagenes.update(es_principal=False)
+        img.es_principal = True
+        img.save()
+        return Response(ProductoImagenSerializer(img, context={'request': request}).data)
+
+    @action(
+        detail=False, methods=['post'], url_path='upload_zip',
+        permission_classes=[IsAuthenticated, IsAdministrador],
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def upload_zip(self, request):
+        """
+        Sube un ZIP con imágenes nombradas por código de variante (FOA-1234.jpg).
+        Las asigna automáticamente al ProductoBase correspondiente.
+        """
+        import zipfile
+        from django.core.files.base import ContentFile
+
+        archivo = request.FILES.get('zip')
+        if not archivo:
+            return Response({'error': 'Enviá un archivo ZIP en el campo "zip"'}, status=400)
+
+        asignadas, no_encontradas, errores = 0, [], []
+        try:
+            with zipfile.ZipFile(archivo) as z:
+                for name in z.namelist():
+                    if name.startswith('__') or name.endswith('/'):
+                        continue
+                    basename = name.split('/')[-1]
+                    stem, dot, ext = basename.rpartition('.')
+                    if not stem or ext.lower() not in ('jpg', 'jpeg', 'png', 'webp'):
+                        continue
+                    codigo = stem.strip()
+                    try:
+                        variante = VarianteProducto.objects.select_related('producto_base').get(
+                            codigo__iexact=codigo
+                        )
+                    except VarianteProducto.DoesNotExist:
+                        no_encontradas.append(codigo)
+                        continue
+                    try:
+                        data = z.read(name)
+                        img_file = ContentFile(data, name=f"{codigo}.{ext.lower()}")
+                        es_primera = not variante.producto_base.imagenes.exists()
+                        ProductoImagen.objects.create(
+                            producto_base=variante.producto_base,
+                            imagen=img_file,
+                            orden=variante.producto_base.imagenes.count(),
+                            es_principal=es_primera,
+                        )
+                        asignadas += 1
+                    except Exception as e:
+                        errores.append({'codigo': codigo, 'error': str(e)})
+        except zipfile.BadZipFile:
+            return Response({'error': 'El archivo no es un ZIP válido'}, status=400)
+
+        return Response({
+            'asignadas': asignadas,
+            'no_encontradas': no_encontradas,
+            'total_no_encontradas': len(no_encontradas),
+            'errores': errores,
+        })
 
 
 class VarianteProductoViewSet(viewsets.ModelViewSet):

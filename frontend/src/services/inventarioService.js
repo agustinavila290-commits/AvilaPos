@@ -199,6 +199,56 @@ export const getProductosPorMoto = async (motoId) => {
   return response.data;
 };
 
+// ── Gestión CRUD de motos (admin POS) ──
+export const getMotosAdmin = async (params = {}) => {
+  const response = await api.get('/tienda/admin/motos/', { params });
+  return Array.isArray(response.data) ? response.data : [];
+};
+export const crearMoto = async (data) => {
+  const response = await api.post('/tienda/admin/motos/', data);
+  return response.data;
+};
+export const actualizarMoto = async (id, data) => {
+  const response = await api.patch(`/tienda/admin/motos/${id}/`, data);
+  return response.data;
+};
+export const eliminarMoto = async (id) => {
+  await api.delete(`/tienda/admin/motos/${id}/`);
+};
+export const toggleMotoActivo = async (id) => {
+  const response = await api.post(`/tienda/admin/motos/${id}/toggle/`);
+  return response.data;
+};
+export const importarMotosExcel = async (file, onUploadProgress) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const response = await api.post('/tienda/admin/motos/importar/', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress,
+  });
+  return response.data;
+};
+
+// ── Compatibilidad producto ↔ moto ──
+export const getMotosProducto = async (productoBaseId) => {
+  const response = await api.get(`/tienda/admin/productos/${productoBaseId}/motos/`);
+  return Array.isArray(response.data) ? response.data : [];
+};
+export const asignarMotoProducto = async (productoBaseId, motoId) => {
+  const response = await api.post(`/tienda/admin/productos/${productoBaseId}/motos/asignar/`, { moto_id: motoId });
+  return response.data;
+};
+export const quitarMotoProducto = async (productoBaseId, motoId) => {
+  await api.delete(`/tienda/admin/productos/${productoBaseId}/motos/${motoId}/`);
+};
+export const asignarMotoMasivo = async (motoId, productoBaseIds) => {
+  const response = await api.post('/tienda/admin/motos/asignar-masivo/', {
+    moto_id: motoId,
+    producto_base_ids: productoBaseIds,
+  });
+  return response.data;
+};
+
 export default {
   // Depósitos
   getDepositos,

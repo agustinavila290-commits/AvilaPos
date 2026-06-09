@@ -50,6 +50,7 @@ export default function ProductoPage() {
   const [agregado, setAgregado] = useState(false)
   const [relacionados, setRelacionados] = useState([])
   const [copiado, setCopiado] = useState(false)
+  const [imgSeleccionada, setImgSeleccionada] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -169,18 +170,41 @@ export default function ProductoPage() {
       </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Imagen */}
-        <div className="aspect-square rounded-xl overflow-hidden bg-gray-50 border border-brand-border flex items-center justify-center">
-          {producto.imagen_url
-            ? <img src={producto.imagen_url} alt={normalizar(producto.nombre_completo)} className="w-full h-full object-cover" />
-            : <div className="flex flex-col items-center text-gray-300 gap-2">
-                <svg className="w-24 h-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm">Sin imagen</span>
-              </div>
-          }
+        {/* Galería de imágenes */}
+        <div className="flex flex-col gap-3">
+          {/* Imagen principal */}
+          <div className="aspect-square rounded-xl overflow-hidden bg-gray-50 border border-brand-border flex items-center justify-center">
+            {producto.imagenes?.length > 0
+              ? <img
+                  src={producto.imagenes[imgSeleccionada]?.url || producto.imagenes[0]?.url}
+                  alt={normalizar(producto.nombre_completo)}
+                  className="w-full h-full object-cover"
+                />
+              : producto.imagen_url
+              ? <img src={producto.imagen_url} alt={normalizar(producto.nombre_completo)} className="w-full h-full object-cover" />
+              : <div className="flex flex-col items-center text-gray-300 gap-2">
+                  <svg className="w-24 h-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm">Sin imagen</span>
+                </div>
+            }
+          </div>
+          {/* Miniaturas */}
+          {producto.imagenes?.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {producto.imagenes.map((img, idx) => (
+                <button
+                  key={img.id}
+                  onClick={() => setImgSeleccionada(idx)}
+                  className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${idx === imgSeleccionada ? 'border-brand-blue' : 'border-transparent hover:border-gray-300'}`}
+                >
+                  <img src={img.url} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -310,6 +334,25 @@ export default function ProductoPage() {
           </div>
         </div>
       </div>
+
+      {/* Compatibilidad de motos */}
+      {producto.motos_compatibles?.length > 0 && (
+        <div className="mt-8 border border-brand-border rounded-xl p-5">
+          <h2 className="text-base font-bold text-brand-text mb-3">🏍️ Compatible con estas motos</h2>
+          <div className="flex flex-wrap gap-2">
+            {producto.motos_compatibles.map(m => (
+              <Link
+                key={m.id}
+                to={`/catalogo?modelo=${m.id}&moto=${encodeURIComponent(`${m.marca} ${m.modelo} ${m.anio}`)}`}
+                className="inline-flex items-center gap-1 bg-blue-50 text-brand-blue border border-blue-200 rounded-full px-3 py-1 text-sm font-medium hover:bg-blue-100 transition-colors"
+              >
+                {m.marca} {m.modelo} {m.anio}
+              </Link>
+            ))}
+          </div>
+          <p className="text-xs text-brand-muted mt-3">Hacé click en una moto para ver todos sus repuestos compatibles</p>
+        </div>
+      )}
 
       {/* Productos relacionados */}
       {relacionados.length > 0 && (

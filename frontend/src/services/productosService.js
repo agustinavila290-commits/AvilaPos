@@ -100,6 +100,40 @@ const productosService = {
     return response.data;
   },
 
+  // ========== IMÁGENES DE PRODUCTO ==========
+  getImagenes: async (productoBaseId) => {
+    const response = await api.get(`/productos/productos/${productoBaseId}/imagenes/`);
+    return response.data;
+  },
+
+  subirImagen: async (productoBaseId, file) => {
+    const fd = new FormData();
+    fd.append('imagen', file);
+    const response = await api.post(`/productos/productos/${productoBaseId}/imagenes/`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  eliminarImagen: async (productoBaseId, imagenId) => {
+    await api.delete(`/productos/productos/${productoBaseId}/imagenes/${imagenId}/`);
+  },
+
+  setPrincipalImagen: async (productoBaseId, imagenId) => {
+    const response = await api.post(`/productos/productos/${productoBaseId}/imagenes/${imagenId}/principal/`);
+    return response.data;
+  },
+
+  uploadZipImagenes: async (file, onUploadProgress) => {
+    const fd = new FormData();
+    fd.append('zip', file);
+    const response = await api.post('/productos/productos/upload_zip/', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    });
+    return response.data;
+  },
+
   // ========== IMPORTACIÓN MASIVA ==========
   importarExcel: async (file, onUploadProgress) => {
     const formData = new FormData();
