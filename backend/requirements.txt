@@ -20,8 +20,9 @@ et-xmlfile==2.0.0
 reportlab==4.2.5
 pillow==11.1.0
 
-# AFIP Integration (opcional - solo si vas a usar facturación real)
-# pyafipws==2024.1.0
+# AFIP Integration (instalar con: pip install git+https://github.com/reingart/pyafipws.git)
+# La versión de PyPI (2.7.x) tiene Python 2 en setup.py y no instala. Usar GitHub.
+pyafipws @ git+https://github.com/reingart/pyafipws.git
 
 # Tickets térmicos (temporal: comentado hasta que soporte Python 3.13)
 # python-escpos==3.0

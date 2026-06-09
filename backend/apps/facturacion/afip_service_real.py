@@ -24,8 +24,7 @@ class AFIPServiceReal:
             config: Objeto ConfiguracionAFIP
         """
         self.config = config
-        self.modo_simulado = config.ambiente == 'H' and False  # Cambiar según necesidad
-        
+
         # Rutas de certificados (ajustar según tu configuración)
         self.cert_path = None
         self.key_path = None
@@ -308,45 +307,47 @@ class AFIPServiceReal:
                     wsfe.TipoDoc = 99
                     wsfe.NroDoc = 0
             
-            # Totales
+            # Calcular bases por alícuota desde los ítems para enviar a AFIP correctamente
+            items = list(factura.items.all())
+            base_105 = sum(_to_decimal(item.subtotal) for item in items if str(item.alicuota_iva) == '10.5')
+            base_21  = sum(_to_decimal(item.subtotal) for item in items if str(item.alicuota_iva) == '21')
+            base_27  = sum(_to_decimal(item.subtotal) for item in items if str(item.alicuota_iva) == '27')
+            base_ex  = sum(_to_decimal(item.subtotal) for item in items if str(item.alicuota_iva) == '0')
+            neto_gravado = base_105 + base_21 + base_27
+
             total = _to_decimal(getattr(factura, 'total', 0))
-            neto = _to_decimal(getattr(factura, 'subtotal', 0))
-            iva = _to_decimal(getattr(factura, 'iva_105', 0)) + _to_decimal(getattr(factura, 'iva_21', 0)) + _to_decimal(getattr(factura, 'iva_27', 0))
-            tot_conc = neto - iva
-            wsfe.ImpTotal = _fmt_afip_amount(total)
-            wsfe.ImpTotConc = _fmt_afip_amount(tot_conc if tot_conc > 0 else Decimal('0'))
-            wsfe.ImpNeto = _fmt_afip_amount(neto)
-            wsfe.ImpOpEx = 0.0
-            wsfe.ImpIVA = _fmt_afip_amount(iva)
-            wsfe.ImpTrib = _fmt_afip_amount(getattr(factura, 'otros_tributos', 0))
-            
-            # IVA
-            if factura.iva_105 > 0:
-                wsfe.IVA = [
-                    {
-                        'Id': 4,  # 10.5%
-                        'BaseImp': _fmt_afip_amount(getattr(factura, 'subtotal', 0)),
-                        'Importe': _fmt_afip_amount(getattr(factura, 'iva_105', 0))
-                    }
-                ]
-            elif factura.iva_21 > 0:
-                wsfe.IVA = [
-                    {
-                        'Id': 5,  # 21%
-                        'BaseImp': _fmt_afip_amount(getattr(factura, 'subtotal', 0)),
-                        'Importe': _fmt_afip_amount(getattr(factura, 'iva_21', 0))
-                    }
-                ]
-            elif factura.iva_27 > 0:
-                wsfe.IVA = [
-                    {
-                        'Id': 6,  # 27%
-                        'BaseImp': _fmt_afip_amount(getattr(factura, 'subtotal', 0)),
-                        'Importe': _fmt_afip_amount(getattr(factura, 'iva_27', 0))
-                    }
-                ]
-            else:
-                wsfe.IVA = []
+            iva = (_to_decimal(getattr(factura, 'iva_105', 0))
+                   + _to_decimal(getattr(factura, 'iva_21', 0))
+                   + _to_decimal(getattr(factura, 'iva_27', 0)))
+
+            wsfe.ImpTotal   = _fmt_afip_amount(total)
+            wsfe.ImpTotConc = '0.00'  # conceptos no gravados — no aplica en ventas normales
+            wsfe.ImpNeto    = _fmt_afip_amount(neto_gravado)
+            wsfe.ImpOpEx    = _fmt_afip_amount(base_ex)  # exentos (alícuota 0%)
+            wsfe.ImpIVA     = _fmt_afip_amount(iva)
+            wsfe.ImpTrib    = _fmt_afip_amount(getattr(factura, 'otros_tributos', 0))
+
+            # IVA — todos los grupos activos con sus bases propias
+            iva_groups = []
+            if base_105 > 0:
+                iva_groups.append({
+                    'Id': 4,  # 10.5%
+                    'BaseImp': _fmt_afip_amount(base_105),
+                    'Importe': _fmt_afip_amount(getattr(factura, 'iva_105', 0))
+                })
+            if base_21 > 0:
+                iva_groups.append({
+                    'Id': 5,  # 21%
+                    'BaseImp': _fmt_afip_amount(base_21),
+                    'Importe': _fmt_afip_amount(getattr(factura, 'iva_21', 0))
+                })
+            if base_27 > 0:
+                iva_groups.append({
+                    'Id': 6,  # 27%
+                    'BaseImp': _fmt_afip_amount(base_27),
+                    'Importe': _fmt_afip_amount(getattr(factura, 'iva_27', 0))
+                })
+            wsfe.IVA = iva_groups
             
             # Autorizar (si falla, devolver XML para diagnosticar el campo problemático)
             try:
@@ -443,6 +444,7 @@ class AFIPServiceReal:
         """Genera datos para código QR según formato AFIP"""
         try:
             tipo_doc = getattr(factura, 'cliente_tipo_documento', None) or 'DNI'
+            nro_doc_qr = (factura.cliente_cuit or '').replace('-', '').replace('.', '').strip()
             datos = {
                 'ver': 1,
                 'fecha': factura.fecha_emision.strftime('%Y-%m-%d'),
@@ -454,7 +456,7 @@ class AFIPServiceReal:
                 'moneda': 'PES',
                 'ctz': 1,
                 'tipoDocRec': self._get_tipo_documento(tipo_doc),
-                'nroDocRec': factura.cliente_cuit.replace('-', '').replace('.', ''),
+                'nroDocRec': int(nro_doc_qr) if nro_doc_qr else 0,
                 'tipoCodAut': 'E',  # E = CAE
                 'codAut': str(cae)
             }
