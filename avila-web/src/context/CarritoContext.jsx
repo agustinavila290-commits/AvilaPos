@@ -42,7 +42,12 @@ function carritoReducer(state, action) {
 function loadFromStorage() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return JSON.parse(saved)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Compatibilidad: formato viejo era array directo, nuevo es { items: [] }
+      if (Array.isArray(parsed)) return { items: parsed }
+      if (parsed && Array.isArray(parsed.items)) return parsed
+    }
   } catch {}
   return { items: [] }
 }
