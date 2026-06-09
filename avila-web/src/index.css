@@ -2,34 +2,181 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────
+   BASE
+────────────────────────────────────────────────────────── */
 @layer base {
   body {
-    @apply bg-brand-bg text-brand-text font-sans;
+    @apply bg-brand-bg text-brand-text font-sans antialiased;
   }
+  * { @apply box-border; }
 
-  * {
-    @apply box-border;
-  }
+  /* Scrollbar racing */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #09090B; }
+  ::-webkit-scrollbar-thumb { background: #DC2626; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #EF4444; }
 }
 
+/* ──────────────────────────────────────────────────────────
+   COMPONENTS
+────────────────────────────────────────────────────────── */
 @layer components {
+
+  /* Botones */
   .btn-primary {
-    @apply bg-brand-blue text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-brand-blue text-white px-4 py-2 rounded-lg font-bold
+           hover:bg-brand-blue-dark active:scale-95
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/50;
   }
 
   .btn-secondary {
-    @apply bg-white text-brand-blue border border-brand-blue px-4 py-2 rounded-lg font-semibold hover:bg-red-50 transition-colors;
+    @apply bg-white text-brand-blue border border-brand-blue px-4 py-2 rounded-lg font-bold
+           hover:bg-red-50 active:scale-95 transition-all duration-200;
   }
 
   .btn-dark {
-    @apply bg-brand-dark text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 transition-colors;
+    @apply bg-brand-dark text-white px-4 py-2 rounded-lg font-bold
+           hover:bg-steel active:scale-95 transition-all duration-200;
   }
 
+  .btn-ghost {
+    @apply bg-white/10 text-white border border-white/20 px-4 py-2 rounded-lg font-semibold
+           hover:bg-white/20 active:scale-95 transition-all duration-200;
+  }
+
+  .btn-green {
+    @apply bg-green-600 text-white px-4 py-2 rounded-lg font-bold
+           hover:bg-green-700 active:scale-95 transition-all duration-200;
+  }
+
+  /* Cards */
   .card {
     @apply bg-white rounded-xl border border-brand-border shadow-sm;
   }
 
+  .card-dark {
+    @apply bg-plate rounded-xl border border-white/10;
+  }
+
+  .card-racing {
+    @apply bg-plate border border-white/10 rounded-2xl overflow-hidden
+           hover:-translate-y-1 hover:shadow-dark transition-all duration-300;
+  }
+
+  /* Input */
   .input {
-    @apply w-full border border-brand-border rounded-lg px-3 py-2 text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent;
+    @apply w-full border border-brand-border rounded-lg px-3 py-2 text-brand-text
+           placeholder:text-brand-muted bg-white
+           focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent
+           transition-all duration-200;
+  }
+
+  .input-dark {
+    @apply w-full border border-white/20 rounded-lg px-3 py-2.5 text-white
+           placeholder:text-gray-500 bg-white/5
+           focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-brand-blue/50
+           transition-all duration-200 appearance-none;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton-dark {
+    background: linear-gradient(90deg, #1C1C26 25%, #252535 50%, #1C1C26 75%);
+    background-size: 400% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  .skeleton-light {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 400% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Brand marquee track */
+  .marquee-wrapper {
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  }
+
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 28s linear infinite;
+    will-change: transform;
+  }
+
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+
+  .marquee-track-fast { animation-duration: 16s; }
+  .marquee-track-slow { animation-duration: 40s; }
+
+  /* WA pulse ring */
+  .wa-ring {
+    @apply absolute inset-0 rounded-full bg-green-600;
+    animation: pulseWa 2.5s ease-in-out infinite;
+  }
+
+  /* Racing section divider */
+  .section-clip-bottom {
+    clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
+    padding-bottom: 3rem;
+  }
+
+  .section-clip-top {
+    clip-path: polygon(0 8%, 100% 0, 100% 100%, 0 100%);
+    padding-top: 3rem;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────
+   UTILITIES
+────────────────────────────────────────────────────────── */
+@layer utilities {
+
+  /* Speed lines overlay (decorative) */
+  .speed-lines {
+    background-image: repeating-linear-gradient(
+      -60deg,
+      transparent,
+      transparent 6px,
+      rgba(220, 38, 38, 0.025) 6px,
+      rgba(220, 38, 38, 0.025) 7px
+    );
+  }
+
+  /* Carbon fiber pattern */
+  .carbon-pattern {
+    background-image:
+      linear-gradient(0deg, transparent 24%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.03) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03) 76%, transparent 77%),
+      linear-gradient(90deg, transparent 24%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.03) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03) 76%, transparent 77%);
+    background-size: 30px 30px;
+  }
+
+  /* Red glow border */
+  .border-glow-red {
+    border-color: #DC2626;
+    box-shadow: 0 0 12px rgba(220,38,38,0.3), inset 0 0 12px rgba(220,38,38,0.05);
+  }
+
+  /* Elevación al hover */
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+  }
+
+  /* Texto con gradiente rojo */
+  .text-gradient-red {
+    background: linear-gradient(90deg, #EF4444 0%, #DC2626 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

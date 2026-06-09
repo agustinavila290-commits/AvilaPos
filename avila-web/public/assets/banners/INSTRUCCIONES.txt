@@ -1,0 +1,21 @@
+BANNERS E IMÁGENES PRINCIPALES
+================================
+
+Colocá las imágenes de banner en esta carpeta:
+
+hero-moto.jpg     → Imagen principal del hero de la home
+                    Sugerencia: foto de moto en taller, repuestos, o moto en ruta
+                    Tamaño: 1920x800px o similar (landscape)
+                    El overlay oscuro es automático — funciona con cualquier foto.
+
+repuestos.jpg     → Imagen secundaria para sección de repuestos
+                    Tamaño: 800x400px
+
+taller.jpg        → Imagen de taller / local
+                    Tamaño: 800x400px
+
+RECOMENDACIONES:
+- Formato: JPG (más liviano que PNG para fotos)
+- Calidad: 80% JPG — comprimir bien (máx 200KB)
+- Usar imágenes propias del local para mayor autenticidad
+- El hero funciona SIN imagen — muestra fondo oscuro grafito como fallback.

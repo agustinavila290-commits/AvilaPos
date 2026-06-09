@@ -1,0 +1,25 @@
+LOGOS DE MARCAS DE MOTOS
+========================
+
+Colocá los logos de marcas de motos en esta carpeta con los nombres exactos:
+
+honda.png
+yamaha.png
+motomel.png
+corven.png
+zanella.png
+gilera.png
+bajaj.png
+benelli.png
+guerrero.png
+keller.png
+mondial.png
+suzuki.png
+
+RECOMENDACIONES:
+- Formato: PNG con fondo transparente (preferido) o fondo blanco
+- Tamaño sugerido: 200x100px o proporcional
+- Calidad: alta pero optimizada (máx 50KB por logo)
+- Si no tenés el logo oficial, dejá el archivo sin crear — la web mostrará el nombre de la marca como fallback.
+
+IMPORTANTE: No uses imágenes con copyright sin autorización.

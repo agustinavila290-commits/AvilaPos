@@ -1,0 +1,31 @@
+LOGOS DE MARCAS DE REPUESTOS
+==============================
+
+Colocá los logos de marcas de repuestos en esta carpeta con los nombres exactos:
+
+ngk.png
+bosch.png
+castrol.png
+motul.png
+elf.png
+ypf.png
+ipone.png
+did.png
+riffel.png
+wstandard.png
+yuasa.png
+moura.png
+pirelli.png
+michelin.png
+metzeler.png
+ira.png
+vini.png
+protork.png
+
+RECOMENDACIONES:
+- Formato: PNG con fondo transparente (preferido) o fondo blanco
+- Tamaño sugerido: 200x100px o proporcional
+- Calidad: alta pero optimizada (máx 50KB por logo)
+- Si no tenés el logo oficial, dejá el archivo sin crear — la web mostrará el nombre de la marca como fallback.
+
+IMPORTANTE: No uses imágenes con copyright sin autorización.

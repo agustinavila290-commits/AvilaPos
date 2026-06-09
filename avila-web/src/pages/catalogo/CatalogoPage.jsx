@@ -117,32 +117,60 @@ export default function CatalogoPage() {
     : 'Catálogo completo de repuestos y accesorios para motos. Filtros por categoría, marca y precio.'
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div>
       <SEO title="Catálogo de repuestos para motos" description={seoDesc} />
 
-      {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-        <h1 className="text-2xl font-bold text-brand-text flex-1">Catálogo</h1>
-        {totalCount > 0 && !loading && (
-          <span className="text-sm text-brand-muted">{totalCount} producto{totalCount !== 1 ? 's' : ''}</span>
-        )}
+      {/* Header visual del catálogo — estética racing */}
+      <div className="bg-carbon carbon-pattern speed-lines text-white py-10 px-4 mb-0 relative overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-transparent via-brand-blue to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-carbon via-carbon/95 to-graphite pointer-events-none" />
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+            <div className="flex-1">
+              <p className="text-xs font-black text-brand-blue uppercase tracking-[0.2em] mb-1">
+                {modeloId && motoLabel ? '🏍️ Búsqueda por compatibilidad' : 'Todo el inventario'}
+              </p>
+              <h1 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                {modeloId && motoLabel
+                  ? `Repuestos para ${decodeURIComponent(motoLabel)}`
+                  : 'Catálogo de repuestos'
+                }
+              </h1>
+            </div>
+            {totalCount > 0 && !loading && (
+              <div className="text-right flex-shrink-0">
+                <span className="text-3xl font-black text-white">{totalCount}</span>
+                <p className="text-xs text-gray-500">producto{totalCount !== 1 ? 's' : ''}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Badge moto activa */}
+          {modeloId && motoLabel && (
+            <div className="mt-5 flex items-center gap-3 bg-brand-blue/10 border border-brand-blue/30
+                            rounded-2xl px-4 py-3 animate-slide-down">
+              <div className="w-9 h-9 rounded-xl bg-brand-blue/20 border border-brand-blue/30
+                              flex items-center justify-center flex-shrink-0">
+                <span className="text-lg">🏍️</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 mb-0.5">Mostrando repuestos para</p>
+                <p className="text-white font-black text-sm truncate">{decodeURIComponent(motoLabel)}</p>
+              </div>
+              <button
+                onClick={() => setSearchParams({})}
+                className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-white
+                           border border-white/15 hover:border-white/40 rounded-xl px-3 py-2
+                           transition-all duration-200 flex-shrink-0 active:scale-95"
+              >
+                Cambiar ✕
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Badge moto activa */}
-      {modeloId && motoLabel && (
-        <div className="flex items-center gap-2 mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm">
-          <span className="text-2xl">🏍️</span>
-          <span className="text-brand-blue font-medium flex-1">
-            Mostrando repuestos para: <span className="font-bold">{decodeURIComponent(motoLabel)}</span>
-          </span>
-          <button
-            onClick={() => setSearchParams({})}
-            className="text-brand-muted hover:text-brand-blue transition-colors text-xs whitespace-nowrap"
-          >
-            Ver todo ✕
-          </button>
-        </div>
-      )}
+      <div className="max-w-6xl mx-auto px-4 py-6">
 
       {/* Buscador + botón filtros mobile */}
       <div className="flex gap-3 mb-3">
@@ -327,6 +355,7 @@ export default function CatalogoPage() {
           onPageChange={n => setParam('page', String(n))}
         />
       )}
+    </div>
     </div>
   )
 }

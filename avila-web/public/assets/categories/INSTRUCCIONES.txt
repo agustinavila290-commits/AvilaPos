@@ -1,0 +1,22 @@
+IMÁGENES DE CATEGORÍAS
+=======================
+
+Colocá las imágenes de categorías en esta carpeta con los nombres exactos:
+
+aceites.jpg       → Foto de aceites/lubricantes para motos
+cascos.jpg        → Foto de cascos de moto
+cubiertas.jpg     → Foto de cubiertas/neumáticos
+transmision.jpg   → Foto de cadenas, piñones, corona
+frenos.jpg        → Foto de pastillas, discos, cables de freno
+baterias.jpg      → Foto de baterías de moto
+filtros.jpg       → Foto de filtros de aire/aceite
+accesorios.jpg    → Foto de accesorios generales
+iluminacion.jpg   → Foto de luces, faros, bombillas
+camaras.jpg       → Foto de cámaras de aire
+
+RECOMENDACIONES:
+- Formato: JPG u optimizado WebP
+- Tamaño: 400x300px mínimo, proporciones 4:3 o 16:9
+- Calidad: media-alta pero optimizada (máx 100KB por imagen)
+- Las imágenes se muestran en cards cuadradas — usá fotos centradas.
+- Si no tenés imagen, el sistema muestra un gradiente de color con ícono — no se rompe la web.
