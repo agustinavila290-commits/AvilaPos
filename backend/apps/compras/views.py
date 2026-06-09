@@ -385,3 +385,103 @@ class OrdenCompraViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrdenCompraSerializer(orden).data)
+
+    @action(detail=True, methods=['get'], url_path='generar_pdf')
+    def generar_pdf(self, request, pk=None):
+        """Descarga el PDF de una orden ya guardada."""
+        from .orden_pdf import generar_pdf_orden_compra
+        import datetime as dt
+        orden = self.get_object()
+
+        items = []
+        for detalle in orden.detalles.select_related('variante__producto_base__marca').all():
+            items.append({
+                'codigo': detalle.variante.codigo or '—',
+                'nombre': detalle.variante.nombre_completo,
+                'cantidad_pedida': detalle.cantidad_pedida,
+                'costo_estimado': detalle.costo_estimado,
+            })
+
+        orden_data = {
+            'numero': orden.numero,
+            'proveedor_nombre': orden.proveedor.nombre,
+            'deposito_nombre': orden.deposito.nombre,
+            'fecha_emision': orden.fecha_emision.strftime('%d/%m/%Y'),
+            'fecha_esperada': orden.fecha_esperada.strftime('%d/%m/%Y') if orden.fecha_esperada else '—',
+            'numero_referencia': orden.numero_referencia,
+            'observaciones': orden.observaciones,
+            'notas_proveedor': orden.notas_proveedor,
+            'items': items,
+            'total_estimado': orden.total_estimado,
+        }
+
+        pdf = generar_pdf_orden_compra(orden_data)
+        response = FileResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="orden_{orden.numero:05d}.pdf"'
+        return response
+
+    @action(detail=False, methods=['post'], url_path='preview_pdf')
+    def preview_pdf(self, request):
+        """Genera PDF de una orden borrador sin guardarla en la base de datos."""
+        from .orden_pdf import generar_pdf_orden_compra
+        import datetime as dt
+        data = request.data
+
+        proveedor_nombre = '—'
+        deposito_nombre = '—'
+        if data.get('proveedor_id'):
+            try:
+                prov = Proveedor.objects.get(id=data['proveedor_id'])
+                proveedor_nombre = prov.nombre
+            except Proveedor.DoesNotExist:
+                pass
+        if data.get('deposito_id'):
+            try:
+                dep = Deposito.objects.get(id=data['deposito_id'])
+                deposito_nombre = dep.nombre
+            except Deposito.DoesNotExist:
+                pass
+
+        items = []
+        for item in data.get('items', []):
+            nombre = item.get('nombre') or '—'
+            codigo = item.get('codigo') or '—'
+            # Si viene variante_id y no tiene nombre propio, buscarlo
+            if item.get('variante_id') and nombre == '—':
+                try:
+                    variante = VarianteProducto.objects.select_related(
+                        'producto_base__marca'
+                    ).get(id=item['variante_id'])
+                    nombre = variante.nombre_completo
+                    codigo = variante.codigo or '—'
+                except VarianteProducto.DoesNotExist:
+                    pass
+            items.append({
+                'codigo': codigo,
+                'nombre': nombre,
+                'cantidad_pedida': item.get('cantidad_pedida', 1),
+                'costo_estimado': item.get('costo_estimado'),
+            })
+
+        total = sum(
+            int(it.get('cantidad_pedida') or 1) * float(it.get('costo_estimado') or 0)
+            for it in items
+        )
+
+        orden_data = {
+            'numero': 'BORRADOR',
+            'proveedor_nombre': proveedor_nombre,
+            'deposito_nombre': deposito_nombre,
+            'fecha_emision': dt.date.today().strftime('%d/%m/%Y'),
+            'fecha_esperada': data.get('fecha_esperada') or '—',
+            'numero_referencia': data.get('numero_referencia'),
+            'observaciones': data.get('observaciones'),
+            'notas_proveedor': data.get('notas_proveedor'),
+            'items': items,
+            'total_estimado': total,
+        }
+
+        pdf = generar_pdf_orden_compra(orden_data)
+        response = FileResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = 'inline; filename="orden_borrador.pdf"'
+        return response

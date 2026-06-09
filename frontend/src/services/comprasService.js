@@ -142,6 +142,20 @@ export const getProductosProveedor = async (proveedorId) => {
   return response.data;
 };
 
+export const previewPdfOrden = async (data) => {
+  const response = await api.post(`${BASE_URL}/ordenes/preview_pdf/`, data, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const generarPdfOrden = async (id) => {
+  const response = await api.get(`${BASE_URL}/ordenes/${id}/generar_pdf/`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
 // ============ BÚSQUEDAS ============
 
 export const buscarProveedores = async (searchTerm) => {
@@ -186,4 +200,6 @@ export default {
   emitirOrden,
   recibirOrden,
   cancelarOrden,
+  previewPdfOrden,
+  generarPdfOrden,
 };

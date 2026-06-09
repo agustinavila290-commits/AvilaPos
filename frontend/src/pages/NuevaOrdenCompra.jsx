@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createOrden, getProveedores, createProveedor } from '../services/comprasService'
+import { createOrden, getProveedores, createProveedor, previewPdfOrden } from '../services/comprasService'
 import productosService from '../services/productosService'
 import { getDepositos } from '../services/inventarioService'
 
@@ -21,9 +21,31 @@ export default function NuevaOrdenCompra() {
   const [resultados, setResultados] = useState([])
   const [buscando, setBuscando] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [exportando, setExportando] = useState(false)
   const [error, setError] = useState('')
+
+  // Modal nuevo proveedor
   const [modalProveedor, setModalProveedor] = useState(false)
   const [nuevoProveedor, setNuevoProveedor] = useState({ nombre: '', telefono: '', email: '' })
+
+  // Modal nuevo producto
+  const [modalNuevoProducto, setModalNuevoProducto] = useState(false)
+  const [marcas, setMarcas] = useState([])
+  const [categorias, setCategorias] = useState([])
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(false)
+  const [creandoProducto, setCreandoProducto] = useState(false)
+  const [nuevoProducto, setNuevoProducto] = useState({
+    nombre: '',
+    codigo: '',
+    nombre_variante: 'Única',
+    marca_id: '',
+    categoria_id: '',
+    costo: '',
+    precio_mostrador: '',
+  })
+  const [nuevaMarca, setNuevaMarca] = useState('')
+  const [creandoMarca, setCreandoMarca] = useState(false)
+
   const debounceRef = useRef(null)
   const abortRef = useRef(null)
 
@@ -86,6 +108,39 @@ export default function NuevaOrdenCompra() {
     return sum + q * c
   }, 0)
 
+  // ── Exportar PDF ─────────────────────────────────────────────────
+  const exportarPDF = async () => {
+    if (items.length === 0) { setError('Agregá al menos un producto para exportar el PDF.'); return }
+    setExportando(true)
+    setError('')
+    try {
+      const payload = {
+        proveedor_id: proveedorId ? parseInt(proveedorId) : null,
+        deposito_id: depositoId ? parseInt(depositoId) : null,
+        fecha_esperada: fechaEsperada || null,
+        numero_referencia: numeroReferencia || null,
+        observaciones: observaciones || null,
+        notas_proveedor: notasProveedor || null,
+        items: items.map(it => ({
+          variante_id: it.variante_id || null,
+          nombre: it.nombre,
+          codigo: it.codigo,
+          cantidad_pedida: parseInt(it.cantidad_pedida) || 1,
+          costo_estimado: parseFloat(it.costo_estimado) || null,
+        })),
+      }
+      const blob = await previewPdfOrden(payload)
+      const url = window.URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000)
+    } catch (e) {
+      setError('Error al generar el PDF. Intentá de nuevo.')
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  // ── Crear proveedor ──────────────────────────────────────────────
   const handleCrearProveedor = async () => {
     if (!nuevoProveedor.nombre.trim()) return
     try {
@@ -99,6 +154,101 @@ export default function NuevaOrdenCompra() {
     }
   }
 
+  // ── Modal nuevo producto ─────────────────────────────────────────
+  const abrirModalNuevoProducto = async () => {
+    setNuevoProducto(prev => ({ ...prev, nombre: busqueda.trim() }))
+    setModalNuevoProducto(true)
+    if (marcas.length === 0) {
+      setCargandoCatalogos(true)
+      try {
+        const [m, c] = await Promise.all([
+          productosService.getMarcas({ activo: true }),
+          productosService.getCategorias({ activo: true }),
+        ])
+        const marcasList = Array.isArray(m) ? m : (m?.results || [])
+        const catsList = Array.isArray(c) ? c : (c?.results || [])
+        setMarcas(marcasList)
+        setCategorias(catsList)
+        if (catsList.length > 0) setNuevoProducto(prev => ({ ...prev, categoria_id: String(catsList[0].id) }))
+      } catch {
+        // continuar sin catalogos
+      } finally {
+        setCargandoCatalogos(false)
+      }
+    }
+  }
+
+  const cerrarModalNuevoProducto = () => {
+    setModalNuevoProducto(false)
+    setNuevoProducto({ nombre: '', codigo: '', nombre_variante: 'Única', marca_id: '', categoria_id: '', costo: '', precio_mostrador: '' })
+    setNuevaMarca('')
+    setCreandoMarca(false)
+  }
+
+  const handleCrearMarca = async () => {
+    if (!nuevaMarca.trim()) return
+    setCreandoMarca(true)
+    try {
+      const m = await productosService.createMarca({ nombre: nuevaMarca.trim(), activo: true })
+      setMarcas(prev => [...prev, m])
+      setNuevoProducto(prev => ({ ...prev, marca_id: String(m.id) }))
+      setNuevaMarca('')
+    } catch (e) {
+      alert('Error al crear la marca: ' + (e?.response?.data?.nombre?.[0] || e.message))
+    } finally {
+      setCreandoMarca(false)
+    }
+  }
+
+  const handleCrearProducto = async () => {
+    const { nombre, codigo, nombre_variante, marca_id, categoria_id, costo, precio_mostrador } = nuevoProducto
+    if (!nombre.trim()) { alert('Ingresá el nombre del producto.'); return }
+    if (!codigo.trim()) { alert('Ingresá el código del producto.'); return }
+    if (!marca_id) { alert('Seleccioná o creá una marca.'); return }
+
+    setCreandoProducto(true)
+    try {
+      const payload = {
+        nombre: nombre.trim(),
+        marca: parseInt(marca_id),
+        categoria: categoria_id ? parseInt(categoria_id) : undefined,
+        variantes: [{
+          nombre_variante: nombre_variante.trim() || 'Única',
+          codigo: codigo.trim(),
+          costo: parseFloat(costo) || 0,
+          precio_mostrador: parseFloat(precio_mostrador) || 0,
+          activo: true,
+        }],
+      }
+      const producto = await productosService.createProducto(payload)
+      // El producto devuelto tiene variantes
+      const variante = producto.variantes?.[0]
+      if (variante) {
+        setItems(prev => [...prev, {
+          variante_id: variante.id,
+          codigo: variante.codigo,
+          nombre: variante.nombre_completo || `${nombre.trim()} ${nombre_variante.trim()}`.trim(),
+          costo_actual: parseFloat(variante.costo || 0),
+          cantidad_pedida: 1,
+          costo_estimado: parseFloat(costo) || '',
+        }])
+      }
+      cerrarModalNuevoProducto()
+      setBusqueda('')
+      setResultados([])
+    } catch (e) {
+      const errData = e?.response?.data
+      const msg = errData?.variantes?.[0]?.codigo?.[0]
+        || errData?.detail
+        || errData?.error
+        || e.message
+      alert('Error al crear el producto: ' + msg)
+    } finally {
+      setCreandoProducto(false)
+    }
+  }
+
+  // ── Guardar orden ────────────────────────────────────────────────
   const handleGuardar = async () => {
     setError('')
     if (!proveedorId) { setError('Seleccioná un proveedor.'); return }
@@ -128,6 +278,7 @@ export default function NuevaOrdenCompra() {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -215,6 +366,25 @@ export default function NuevaOrdenCompra() {
 
           {error && <p className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-sm">{error}</p>}
 
+          {/* Botones de acción */}
+          <button
+            onClick={exportarPDF}
+            disabled={exportando || items.length === 0}
+            className="w-full bg-white border border-brand-blue text-brand-blue py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-50 disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            {exportando ? (
+              'Generando PDF...'
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Exportar PDF
+              </>
+            )}
+          </button>
+
           <button
             onClick={handleGuardar}
             disabled={guardando}
@@ -235,6 +405,7 @@ export default function NuevaOrdenCompra() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
             />
             {buscando && <p className="text-xs text-gray-400 mt-1">Buscando...</p>}
+
             {resultados.length > 0 && (
               <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden">
                 {resultados.map(v => (
@@ -247,11 +418,36 @@ export default function NuevaOrdenCompra() {
                     <span className="font-mono text-xs text-gray-400 mr-2">{v.codigo}</span>
                     <span className="font-medium">{v.nombre_completo}</span>
                     <span className="ml-2 text-gray-400 text-xs">— ${parseFloat(v.costo || 0).toLocaleString('es-AR')}</span>
-                    {items.some(i => i.variante_id === v.id) && <span className="ml-2 text-green-500 text-xs">✓ Ya agregado</span>}
+                    {items.some(i => i.variante_id === v.id) && <span className="ml-2 text-green-500 text-xs">Ya agregado</span>}
                   </button>
                 ))}
               </div>
             )}
+
+            {/* Opción crear producto cuando no hay resultados */}
+            {!buscando && busqueda.trim().length >= 2 && resultados.length === 0 && (
+              <div className="mt-2 border border-dashed border-orange-300 rounded-lg p-3 bg-orange-50">
+                <p className="text-sm text-orange-700 mb-2">
+                  No se encontró "<span className="font-semibold">{busqueda}</span>" en el inventario.
+                </p>
+                <button
+                  onClick={abrirModalNuevoProducto}
+                  className="text-sm bg-orange-500 text-white px-4 py-1.5 rounded-lg font-semibold hover:bg-orange-600"
+                >
+                  + Crear nuevo producto
+                </button>
+              </div>
+            )}
+
+            {/* Acceso rápido a crear producto siempre visible */}
+            <div className="mt-3 text-right">
+              <button
+                onClick={abrirModalNuevoProducto}
+                className="text-xs text-gray-400 hover:text-brand-blue underline"
+              >
+                + Crear producto que no existe
+              </button>
+            </div>
           </div>
 
           {/* Lista de items */}
@@ -276,7 +472,7 @@ export default function NuevaOrdenCompra() {
                   {items.map((it, idx) => {
                     const subtotal = (parseInt(it.cantidad_pedida) || 0) * (parseFloat(it.costo_estimado) || 0)
                     return (
-                      <tr key={it.variante_id} className="border-b">
+                      <tr key={it.variante_id ?? idx} className="border-b">
                         <td className="px-3 py-2 font-mono text-xs">{it.codigo}</td>
                         <td className="px-3 py-2 text-sm">{it.nombre}</td>
                         <td className="px-3 py-2 text-center">
@@ -318,7 +514,7 @@ export default function NuevaOrdenCompra() {
         </div>
       </div>
 
-      {/* Modal nuevo proveedor */}
+      {/* ── Modal nuevo proveedor ──────────────────────────────────── */}
       {modalProveedor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-2xl">
@@ -348,6 +544,141 @@ export default function NuevaOrdenCompra() {
                 className="bg-brand-blue text-white px-4 py-2 rounded-lg text-sm font-semibold hover:brightness-110 disabled:opacity-50"
               >
                 Crear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal nuevo producto ───────────────────────────────────── */}
+      {modalNuevoProducto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-gray-800 mb-1">Crear nuevo producto</h3>
+            <p className="text-xs text-gray-500 mb-4">El producto se agregará al inventario y quedará disponible para futuros pedidos.</p>
+
+            {cargandoCatalogos ? (
+              <p className="text-sm text-gray-400 text-center py-4">Cargando marcas y categorías...</p>
+            ) : (
+              <div className="space-y-3">
+                {/* Nombre del producto */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del producto *</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Filtro de aceite, Pastilla de freno..."
+                    value={nuevoProducto.nombre}
+                    onChange={e => setNuevoProducto(p => ({ ...p, nombre: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  />
+                </div>
+
+                {/* Código */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Código *</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: FOA-1234"
+                    value={nuevoProducto.codigo}
+                    onChange={e => setNuevoProducto(p => ({ ...p, codigo: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue font-mono"
+                  />
+                </div>
+
+                {/* Marca */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Marca *</label>
+                  <select
+                    value={nuevoProducto.marca_id}
+                    onChange={e => setNuevoProducto(p => ({ ...p, marca_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  >
+                    <option value="">Seleccioná una marca...</option>
+                    {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  </select>
+                  <div className="flex gap-2 mt-1.5">
+                    <input
+                      type="text"
+                      placeholder="Crear nueva marca..."
+                      value={nuevaMarca}
+                      onChange={e => setNuevaMarca(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && nuevaMarca.trim() && handleCrearMarca()}
+                      className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                    />
+                    <button
+                      onClick={handleCrearMarca}
+                      disabled={!nuevaMarca.trim() || creandoMarca}
+                      className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-40"
+                    >
+                      {creandoMarca ? '...' : '+ Crear'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Categoría */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Categoría</label>
+                  <select
+                    value={nuevoProducto.categoria_id}
+                    onChange={e => setNuevoProducto(p => ({ ...p, categoria_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  >
+                    <option value="">Sin categoría</option>
+                    {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+
+                {/* Nombre de variante */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Variante</label>
+                  <input
+                    type="text"
+                    placeholder="Única"
+                    value={nuevoProducto.nombre_variante}
+                    onChange={e => setNuevoProducto(p => ({ ...p, nombre_variante: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  />
+                </div>
+
+                {/* Precios */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Costo</label>
+                    <input
+                      type="number" min="0" step="0.01"
+                      placeholder="0.00"
+                      value={nuevoProducto.costo}
+                      onChange={e => setNuevoProducto(p => ({ ...p, costo: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Precio mostrador</label>
+                    <input
+                      type="number" min="0" step="0.01"
+                      placeholder="0.00"
+                      value={nuevoProducto.precio_mostrador}
+                      onChange={e => setNuevoProducto(p => ({ ...p, precio_mostrador: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-5 justify-end">
+              <button
+                onClick={cerrarModalNuevoProducto}
+                className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCrearProducto}
+                disabled={creandoProducto || cargandoCatalogos || !nuevoProducto.nombre.trim() || !nuevoProducto.codigo.trim() || !nuevoProducto.marca_id}
+                className="bg-brand-blue text-white px-4 py-2 rounded-lg text-sm font-semibold hover:brightness-110 disabled:opacity-50"
+              >
+                {creandoProducto ? 'Creando...' : 'Crear y agregar a la orden'}
               </button>
             </div>
           </div>

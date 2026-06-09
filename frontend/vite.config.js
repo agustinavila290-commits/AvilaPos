@@ -30,25 +30,17 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Separar librerías de terceros
-          if (id.includes('node_modules/react')) {
-            return 'vendor-react';
-          }
+          // Todos los node_modules en un solo chunk para evitar
+          // problemas de orden de evaluación con React.forwardRef
           if (id.includes('node_modules')) {
             return 'vendor';
           }
-          
-          // Separar componentes compartidos
           if (id.includes('src/components')) {
             return 'components';
           }
-          
-          // Páginas en chunk único
           if (id.includes('src/pages')) {
             return 'pages';
           }
-          
-          // Contextos y utilidades
           if (id.includes('src/context') || id.includes('src/utils')) {
             return 'app-utils';
           }

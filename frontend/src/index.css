@@ -164,13 +164,22 @@
   .sidebar-item {
     @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-lg text-sm text-brand-muted hover:bg-brand-bg hover:text-brand-text transition-all duration-150;
   }
+  .sidebar-item:focus-visible {
+    @apply outline-none ring-2 ring-brand-blue ring-inset;
+  }
 
   .dark .sidebar-item {
     @apply text-gray-300 hover:bg-slate-700;
   }
+  .dark .sidebar-item:focus-visible {
+    @apply ring-blue-400;
+  }
 
   .sidebar-item-active {
     @apply flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-lg text-sm bg-brand-blue text-white border-l-4 border-brand-blue-dark font-semibold;
+  }
+  .sidebar-item-active:focus-visible {
+    @apply outline-none ring-2 ring-white ring-inset;
   }
 
   .dark .sidebar-item-active {
@@ -240,5 +249,57 @@
   /* Transiciones suaves para todo */
   .smooth-transition {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ===== NAVEGACIÓN POR TECLADO ===== */
+
+  /* Focus visible en botones */
+  button:focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  .dark button:focus-visible {
+    outline-color: #60A5FA;
+  }
+
+  /* Focus visible en links */
+  a:focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .dark a:focus-visible {
+    outline-color: #60A5FA;
+  }
+
+  /* Fila de carrito focuseable */
+  .cart-row-focusable:focus {
+    outline: 2px solid #2563EB;
+    outline-offset: -2px;
+    border-radius: 8px;
+    background-color: #EFF6FF;
+  }
+  .dark .cart-row-focusable:focus {
+    outline-color: #60A5FA;
+    background-color: rgba(37, 99, 235, 0.15);
+  }
+
+  /* Fila de tabla focuseable */
+  tr[tabindex]:focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: -2px;
+    background-color: #EFF6FF !important;
+  }
+  .dark tr[tabindex]:focus-visible {
+    outline-color: #60A5FA;
+    background-color: rgba(37, 99, 235, 0.2) !important;
+  }
+
+  /* Eliminar outline en inputs (ya tienen ring de Tailwind) */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
   }
 }

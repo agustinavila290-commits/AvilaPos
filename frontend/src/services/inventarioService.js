@@ -80,7 +80,8 @@ export const ajustarStock = async (data) => {
 
 export const getMovimientos = async (params = {}) => {
   const response = await api.get(`${BASE_URL}/movimientos/`, { params });
-  return response.data;
+  const data = response.data;
+  return Array.isArray(data) ? data : (data?.results ?? []);
 };
 
 export const getMovimiento = async (id) => {
@@ -94,7 +95,8 @@ export const getMovimientosPorVariante = async (varianteId, depositoId = null) =
     params.deposito_id = depositoId;
   }
   const response = await api.get(`${BASE_URL}/movimientos/por_variante/`, { params });
-  return response.data;
+  const data = response.data;
+  return Array.isArray(data) ? data : (data?.results ?? []);
 };
 
 export const getResumenDiario = async () => {

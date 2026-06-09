@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,23 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navRef = useRef(null);
+
+  // Navegar el sidebar con flechas arriba/abajo
+  const handleNavKeyDown = useCallback((e) => {
+    if (!navRef.current) return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const focusables = Array.from(navRef.current.querySelectorAll('a, button'));
+    const idx = focusables.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      const next = focusables[idx + 1] ?? focusables[0];
+      next?.focus();
+    } else {
+      const prev = focusables[idx - 1] ?? focusables[focusables.length - 1];
+      prev?.focus();
+    }
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -83,17 +100,16 @@ export default function Layout({ children }) {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="px-4 py-3 flex justify-between items-center" style={{ backgroundColor: '#1E3A8A' }}>
-          <div>
-            <h1 className="text-sm sm:text-base font-bold text-white tracking-wide">
-              Casa de Repuestos
-            </h1>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>Sistema de gestión</p>
-          </div>
+        <div className="relative flex items-center justify-center px-4 py-3 bg-white border-b-[3px] border-brand-blue">
+          <img
+            src="/logo-avila.png"
+            alt="Avila Moto Repuestos"
+            className="h-[90px] w-auto object-contain"
+          />
           {/* Botón cerrar en móvil */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white/70 hover:text-white"
+            className="lg:hidden absolute right-2 top-2 text-slate-400 hover:text-slate-700 p-1"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -119,7 +135,7 @@ export default function Layout({ children }) {
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto">
+        <nav ref={navRef} onKeyDown={handleNavKeyDown} className="flex-1 px-2 sm:px-3 py-3 sm:py-4 overflow-y-auto">
           <div className="space-y-1">
             {menuItems
               .filter(item => !item.admin || isAdmin())
@@ -186,7 +202,7 @@ export default function Layout({ children }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h2 className="text-xs sm:text-sm font-bold text-slate-800">Casa de Repuestos</h2>
+          <img src="/logo-avila.png" alt="Avila" className="h-8 w-auto object-contain" />
           <div className="w-5"></div>
         </div>
 

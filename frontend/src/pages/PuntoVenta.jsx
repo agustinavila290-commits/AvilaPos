@@ -972,10 +972,40 @@ export default function PuntoVentaNuevo() {
                             ? `${productoNombre} - ${varianteNombre}`
                             : productoNombre
                           : item.variante.nombre_completo;
+                        const bgBase = idx % 2 === 0 ? '#ffffff' : '#F9FAFB';
                         return (
-                        <tr key={item.variante.id} className="border-b border-brand-border transition-colors" style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#F9FAFB' }}
+                        <tr
+                          key={item.variante.id}
+                          tabIndex={0}
+                          className="border-b border-brand-border transition-colors cart-row-focusable"
+                          style={{ backgroundColor: bgBase }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = '#EFF6FF'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#F9FAFB'}
+                          onMouseLeave={e => { if (document.activeElement !== e.currentTarget) e.currentTarget.style.backgroundColor = bgBase; }}
+                          onFocus={e => e.currentTarget.style.backgroundColor = '#EFF6FF'}
+                          onBlur={e => e.currentTarget.style.backgroundColor = bgBase}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              e.currentTarget.nextElementSibling?.focus();
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              const prev = e.currentTarget.previousElementSibling;
+                              if (prev && prev.tagName === 'TR') prev.focus();
+                              else codigoInputRef.current?.focus();
+                            } else if (e.key === '+' || e.key === '=') {
+                              e.preventDefault();
+                              cambiarCantidad(item.variante.id, item.cantidad + 1);
+                            } else if (e.key === '-') {
+                              e.preventDefault();
+                              cambiarCantidad(item.variante.id, Math.max(1, item.cantidad - 1));
+                            } else if (e.key === 'Delete') {
+                              e.preventDefault();
+                              const siguiente = e.currentTarget.nextElementSibling ?? e.currentTarget.previousElementSibling;
+                              eliminarItem(item.variante.id);
+                              setTimeout(() => siguiente?.focus() ?? codigoInputRef.current?.focus(), 50);
+                            }
+                          }}
+                          title="↑↓ navegar · + aumentar · − disminuir · Del eliminar"
                         >
                           <td className="px-3 lg:px-4 py-2.5 text-xs font-mono" style={{ color: '#6B7280' }}>{item.variante.codigo}</td>
                           <td className="px-3 lg:px-4 py-2.5 text-xs font-medium truncate min-w-0 max-w-[200px]" style={{ color: '#111827' }}>{descripcion}</td>
@@ -985,24 +1015,26 @@ export default function PuntoVentaNuevo() {
                             <div className="inline-flex items-center rounded border overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
                               <button
                                 type="button"
+                                tabIndex={-1}
                                 onClick={() => cambiarCantidad(item.variante.id, Math.max(1, item.cantidad - 1))}
                                 className="w-7 h-7 flex items-center justify-center font-bold text-base transition-colors"
                                 style={{ color: '#374151' }}
                                 onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F3F4F6'}
                                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                                title="Menos"
+                                title="Menos (−)"
                               >−</button>
                               <span className="min-w-[1.75rem] px-1 text-xs font-bold tabular-nums text-center" style={{ color: '#111827' }}>
                                 {item.cantidad}
                               </span>
                               <button
                                 type="button"
+                                tabIndex={-1}
                                 onClick={() => cambiarCantidad(item.variante.id, item.cantidad + 1)}
                                 className="w-7 h-7 flex items-center justify-center font-bold text-base transition-colors"
                                 style={{ color: '#374151' }}
                                 onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F3F4F6'}
                                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                                title="Más"
+                                title="Más (+)"
                               >+</button>
                             </div>
                           </td>
@@ -1011,12 +1043,13 @@ export default function PuntoVentaNuevo() {
                           </td>
                           <td className="px-3 lg:px-4 py-2.5 text-center">
                             <button
+                              tabIndex={-1}
                               onClick={() => eliminarItem(item.variante.id)}
                               className="w-6 h-6 flex items-center justify-center rounded transition-colors mx-auto"
                               style={{ color: '#DC2626' }}
                               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
                               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                              title="Eliminar"
+                              title="Eliminar (Del)"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>

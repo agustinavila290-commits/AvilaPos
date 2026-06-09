@@ -118,7 +118,7 @@ class DevolucionVentaViewSet(viewsets.ModelViewSet):
                         'id': p['variante'].id,
                         'nombre': p['variante'].nombre_completo,
                         'sku': p['variante'].sku,
-                        'codigo_barras': p['variante'].codigo_barras
+                        'codigo_barras': p['variante'].codigo
                     },
                     'cantidad_vendida': p['cantidad_vendida'],
                     'cantidad_devuelta': p['cantidad_devuelta'],
