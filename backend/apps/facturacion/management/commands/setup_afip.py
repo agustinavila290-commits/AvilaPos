@@ -14,7 +14,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 BASE_DIR = Path(__file__).resolve().parents[4]  # backend/
 CERT_DIR = BASE_DIR / 'scripts' / 'certs'
-CERT_FILE = CERT_DIR / 'facturacion_2102a5b8dee42c69.crt'
+CERT_FILE = CERT_DIR / 'facturacion_pos.crt'
 KEY_FILE = CERT_DIR / 'clave_privada.key'
 
 CUIT_DEFAULT = '20238543917'
