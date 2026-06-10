@@ -13,11 +13,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # IMPORTANTE: Las variables del sistema (establecidas por scripts .bat) tienen prioridad sobre .env
 try:
     from dotenv import load_dotenv
-    env_path = BASE_DIR.parent.parent / '.env'  # Avila/.env
-    if env_path.exists():
-        # override=False: las variables del sistema NO se sobrescriben por .env
-        # Esto permite que los scripts .bat establezcan ALLOWED_HOSTS=* y USE_SQLITE=True
-        load_dotenv(env_path, override=False)
+    # Buscar .env en backend/ (servidor) o en el directorio padre (dev local)
+    for _env_path in [BASE_DIR / '.env', BASE_DIR.parent / '.env']:
+        if _env_path.exists():
+            # override=False: las variables del sistema (systemd/bat) tienen prioridad
+            load_dotenv(_env_path, override=False)
+            break
 except ImportError:
     pass  # python-dotenv no instalado, usar solo variables de entorno del sistema
 except Exception as e:
