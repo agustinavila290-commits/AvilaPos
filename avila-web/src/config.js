@@ -1,4 +1,4 @@
-export const WA_NUMBER = '549XXXXXXXXXX'  // TODO: reemplazar con número real del local
+export const WA_NUMBER = '5493834625390'
 
 export const SITIO = {
   nombre:      'Avila Moto Repuestos',
@@ -8,14 +8,13 @@ export const SITIO = {
   provincia:   'Catamarca',
 }
 
-export const ENVIO_GRATIS_DESDE = 30000  // TODO: ajustar según política de envío
+export const ENVIO_GRATIS_DESDE = 80000
 
-// TODO: completar con datos bancarios reales
 export const BANK_INFO = {
-  titular: 'TODO — Nombre del titular',
-  alias:   'TODO.ALIAS.BANCARIO',
-  cbu:     'TODO0000000000000000000000',
-  banco:   'TODO — Nombre del banco',
+  titular: 'Avila Marcelo Bernabe',
+  alias:   'avilaxxx',
+  cbu:     '',
+  banco:   'Mercado Pago',
 }
 
 export const ORDER_STATUS_LABELS = {

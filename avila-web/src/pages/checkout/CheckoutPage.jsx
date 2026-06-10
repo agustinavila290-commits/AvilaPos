@@ -93,19 +93,21 @@ function DatosBancarios() {
             </button>
           </div>
         </div>
-        <div className="flex justify-between items-center gap-2">
-          <span className="text-brand-muted">CBU/CVU</span>
-          <div className="flex items-center gap-1">
-            <span className="font-mono text-xs text-brand-dark">{BANK_INFO.cbu}</span>
-            <button
-              type="button"
-              onClick={() => copiar(BANK_INFO.cbu, 'cbu')}
-              className="text-xs text-brand-blue hover:underline ml-1"
-            >
-              {copiadoCbu ? '✓ Copiado' : 'Copiar'}
-            </button>
+        {BANK_INFO.cbu && (
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-brand-muted">CBU/CVU</span>
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-xs text-brand-dark">{BANK_INFO.cbu}</span>
+              <button
+                type="button"
+                onClick={() => copiar(BANK_INFO.cbu, 'cbu')}
+                className="text-xs text-brand-blue hover:underline ml-1"
+              >
+                {copiadoCbu ? '✓ Copiado' : 'Copiar'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <p className="text-xs text-brand-muted mt-3 border-t border-blue-200 pt-3">
         Luego de transferir, enviá el comprobante por WhatsApp indicando tu número de pedido.
