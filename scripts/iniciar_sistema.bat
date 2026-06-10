@@ -10,8 +10,8 @@ echo.
 echo   Cierra las ventanas que se abran para detener el sistema.
 echo.
 
-start "Backend Django" cmd /k "cd /d "%~dp0backend" && set USE_SQLITE=True && call venv\Scripts\activate.bat && python manage.py runserver"
+start "Backend Django" cmd /k "cd /d "%~dp0..\backend" && set USE_SQLITE=True && call venv\Scripts\activate.bat && python manage.py runserver"
 timeout /t 4 /nobreak >nul
-start "Frontend Vite" cmd /k "cd /d "%~dp0frontend" && npm run dev"
+start "Frontend Vite" cmd /k "cd /d "%~dp0..\frontend" && npm run dev"
 
 exit

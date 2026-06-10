@@ -18,7 +18,7 @@ if exist "%ROOT%\AvilaPOS.exe" (
     set TARGET_ARGS=
 ) else (
     set TARGET=wscript.exe
-    set TARGET_ARGS=%ROOT%\iniciar_avilapos.vbs
+    set TARGET_ARGS=%ROOT%\launcher\iniciar_avilapos.vbs
 )
 
 powershell -NoProfile -Command ^

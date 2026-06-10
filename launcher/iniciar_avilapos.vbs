@@ -9,8 +9,8 @@ Dim WshShell, fso, pythonw, launcherScript, projectRoot
 Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
-' Raiz del proyecto (un nivel arriba de donde está este .vbs)
-projectRoot = fso.GetParentFolderName(WScript.ScriptFullName)
+' Raiz del proyecto (dos niveles arriba: este .vbs vive en launcher/)
+projectRoot = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
 launcherScript = projectRoot & "\launcher\launcher.py"
 
 ' Buscar pythonw.exe: primero en el venv, luego en el PATH

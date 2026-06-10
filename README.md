@@ -96,87 +96,80 @@ Actualmente se continúa con ajustes de integración externa (AFIP y Clover).
 ```
 Avila/
 │
-├── backend/                      # Proyecto Django (API POS + admin)
-│   ├── backend/                  # Configuración principal
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── wsgi.py / asgi.py
-│   │
-│   ├── apps/                     # Apps Django por dominio
+├── backend/                      # Django API (POS + admin)
+│   ├── apps/                     # 15 apps Django por dominio
 │   │   ├── usuarios/            # Auth, roles, JWT
 │   │   ├── clientes/            # Gestión de clientes
-│   │   ├── productos/           # Productos, variantes, búsqueda, Excel
+│   │   ├── productos/           # Productos, variantes, búsqueda
 │   │   ├── inventario/          # Stock, depósitos, movimientos
 │   │   ├── ventas/              # POS, ventas, tickets
 │   │   ├── compras/             # Compras y proveedores
-│   │   ├── reportes/            # Endpoints de reportes
+│   │   ├── reportes/            # Dashboard y análisis
 │   │   ├── configuracion/       # Parámetros del sistema
 │   │   ├── devoluciones/        # Devoluciones y notas de crédito
 │   │   ├── cuenta_corriente/    # Tickets en cuenta corriente
-│   │   ├── sistema/             # Backups, auditoría, exportaciones
-│   │   ├── facturacion/         # AFIP y facturación electrónica
+│   │   ├── sistema/             # Backups, auditoría
+│   │   ├── facturacion/         # AFIP facturación electrónica
 │   │   ├── clover/              # Pagos con tarjeta Clover
-│   │   ├── woocommerce/         # Integración con tienda web
-│   │   └── tienda/              # API tienda web propia
+│   │   ├── woocommerce/         # Integración tienda (inactivo)
+│   │   └── tienda/              # API tienda web pública
 │   │
-│   ├── scripts/                 # Scripts backend específicos
+│   ├── backend/                  # Settings, urls, wsgi, asgi
+│   ├── scripts/                  # Scripts utilitarios Python (setup, datos de prueba)
+│   ├── certs/                    # Certificados AFIP (gitignored)
+│   ├── backups/                  # Backups automáticos (gitignored)
 │   ├── manage.py
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── .env                      # Variables de entorno (gitignored)
 │
-├── frontend/                     # POS (React + Vite + Electron)
-│   ├── src/
-│   │   ├── pages/               # Páginas del POS (ventas, productos, etc.)
-│   │   ├── components/          # Componentes UI (layout, ticket, modales...)
-│   │   ├── services/            # Llamadas a /api (auth, ventas, inventario, etc.)
-│   │   ├── context/             # Auth, tema, etc.
-│   │   ├── utils/               # Utilidades (ej. uppercaseInput)
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   │
-│   ├── electron/                # Integración Electron (app de escritorio)
-│   ├── public/
-│   ├── package.json
-│   └── vite.config.js
+├── frontend/                     # POS React + Vite (corre en localhost:5173)
+│   └── src/
+│       ├── pages/               # PuntoVenta, Ventas, Clientes, Productos...
+│       ├── components/          # Layout, TicketTermico, modales
+│       ├── services/            # API calls
+│       └── context/             # AuthContext
 │
-├── avila-web/                   # Sitio y tienda web pública
-│   ├── src/
-│   │   ├── pages/               # Home, catálogo, producto, carrito, checkout, legales...
-│   │   ├── components/          # Layout, tarjetas de producto, mapas, etc.
-│   │   ├── context/             # Auth, carrito
-│   │   ├── services/            # API tienda / WooCommerce
-│   │   └── styles/
-│   ├── public/
-│   ├── package.json
-│   └── vite.config.js
+├── avila-web/                   # Tienda web pública (localhost:5174 / Vercel)
+│   └── src/
+│       ├── pages/               # Home, Catálogo, Producto, Carrito, Checkout...
+│       ├── components/          # Layout, ProductCard, BuscadorPorMoto...
+│       ├── context/             # CarritoContext, FavoritosContext, AuthContext
+│       └── services/            # tiendaApi, authApi
 │
-├── docs/                        # Documentación del sistema
-│   ├── ARQUITECTURA.md          # Mapa del proyecto (backend, frontend, rutas API)
-│   ├── INSTALL.md               # Guía de instalación detallada
-│   ├── INTEGRACION_CLOVER.md    # Pagos con tarjeta (Clover)
-│   ├── ...                      # AFIP, Excel, POS vs web, etc.
-│   └── historial/               # Historial de cambios internos (.md de rediseños, compactos, etc.)
+├── launcher/                    # Launcher Windows
+│   ├── launcher.py              # Inicia Django + Vite sin consola
+│   ├── iniciar_avilapos.vbs     # Alternativa sin compilar (doble clic)
+│   ├── icon.ico
+│   └── build_exe.bat            # Compila AvilaPOS.exe con PyInstaller
 │
-├── scripts/                     # Scripts de instalación y utilidades (Windows / PowerShell / bash)
-│   ├── iniciar_sistema.bat      # Inicia backend + frontend POS (antes estaba en la raíz)
+├── deploy/                      # Scripts de servidor Linux + Docker
+│   ├── nginx-avilamotorepuesto.conf
+│   ├── avilapos.service         # systemd service
+│   ├── docker-compose.yml       # PostgreSQL Docker
+│   ├── backup.sh / restore.sh
+│   ├── install-servidor.sh
+│   └── update.sh
+│
+├── docs/                        # Documentación
+│   ├── ARQUITECTURA.md
+│   ├── INSTALL.md               # Guía de instalación
+│   ├── LEEME.txt                # Guía para el usuario final
+│   ├── PASOS_ACTIVAR_AFIP.md
+│   ├── INTEGRACION_CLOVER.md
+│   └── COMANDOS_SERVIDOR.md
+│
+├── scripts/                     # Scripts Windows para operación local
+│   ├── instalar_todo.bat        # Instalación automática
+│   ├── iniciar_sistema.bat      # Inicia backend + frontend con consolas
 │   ├── iniciar_sistema.ps1      # Variante PowerShell
-│   ├── iniciar_sistema_red.bat  # Inicio POS en red (IP)
-│   ├── iniciar_pos_servicio.bat # Inicio como servicio POS
-│   ├── instalar_todo.bat        # Instalación automática en Windows
-│   ├── iniciar_electron.bat     # Arranca versión Electron del POS
-│   ├── ver_ip_local.bat         # Muestra IP local para red
-│   ├── crear_admin.bat          # Crea usuario admin rápido
-│   ├── resetear_admin.bat       # Resetea credenciales admin
-│   ├── setup.sh / setup.ps1     # Setup para otros entornos
-│   └── reinstall-backend.ps1    # Reinstalar dependencias backend
+│   ├── cerrar_avilapos.bat      # Cierra todos los procesos
+│   ├── crear_accesos_directos.bat
+│   └── ...
 │
-├── docker-compose.yml           # Orquestación Docker (app + PostgreSQL)
-├── .env.example                 # Variables de entorno de ejemplo
-├── .env                         # Variables de entorno locales (no se commitea)
+├── AvilaPOS.exe                 # Ejecutable compilado (launcher sin consola)
+├── iniciar_sistema.bat          # Wrapper raíz → llama a scripts/iniciar_sistema.bat
 ├── .gitignore
-├── .gitattributes
-├── iniciar_sistema.bat          # Wrapper pequeño que llama a scripts/iniciar_sistema.bat
-├── INSTALL.md                   # Guía de instalación (duplicada en docs/)
-└── README.md                    # Este archivo
+└── README.md
 ```
 
 ---

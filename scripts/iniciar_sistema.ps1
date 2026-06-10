@@ -37,14 +37,14 @@ Write-Host "[INFO] Iniciando sistema...`n" -ForegroundColor Cyan
 
 # Verificar directorio
 Write-Step 1 "Verificando instalacion..."
-if (-not (Test-Path "backend\manage.py")) {
+if (-not (Test-Path (Join-Path $PSScriptRoot "..\backend\manage.py"))) {
     Write-ErrorMsg "Backend no encontrado"
-    Write-Host "`nAsegurate de ejecutar desde la carpeta raiz del proyecto.`n" -ForegroundColor Yellow
+    Write-Host "`nAsegurate de que la carpeta backend/ exista en la raiz del proyecto.`n" -ForegroundColor Yellow
     pause
     exit 1
 }
 
-if (-not (Test-Path "frontend\package.json")) {
+if (-not (Test-Path (Join-Path $PSScriptRoot "..\frontend\package.json"))) {
     Write-ErrorMsg "Frontend no encontrado"
     Write-Host "`nAsegurate de ejecutar desde la carpeta raiz del proyecto.`n" -ForegroundColor Yellow
     pause
@@ -75,14 +75,14 @@ Write-Host ""
 
 # Iniciar Backend
 Write-Step 2 "Iniciando Backend (Django)..."
-$backendPath = Join-Path $PSScriptRoot "backend"
+$backendPath = Join-Path $PSScriptRoot "..\backend"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; .\venv\Scripts\python.exe manage.py runserver" -WindowStyle Normal
 Write-Success "Backend iniciado en http://localhost:8000"
 Start-Sleep -Seconds 5
 
 # Iniciar Frontend
 Write-Step 3 "Iniciando Frontend (React)..."
-$frontendPath = Join-Path $PSScriptRoot "frontend"
+$frontendPath = Join-Path $PSScriptRoot "..\frontend"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendPath'; npm run dev" -WindowStyle Normal
 Write-Success "Frontend iniciando..."
 Start-Sleep -Seconds 8

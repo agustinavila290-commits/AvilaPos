@@ -67,3 +67,6 @@ out/
 
 # Carpeta auxiliar / duplicada
 Avila-/
+
+# Launcher runtime files
+launcher/running.pids
