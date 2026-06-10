@@ -13,25 +13,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Existing brand palette (unchanged for backwards compat)
         brand: {
-          blue:        '#DC2626',
-          'blue-dark': '#991B1B',
-          green:       '#16A34A',
-          red:         '#DC2626',
-          bg:          '#F3F4F6',
-          border:      '#E5E7EB',
-          text:        '#111827',
-          muted:       '#6B7280',
-          dark:        '#1F2937',
+          blue:        '#E11D2A',   // acento principal (CTAs, precios, links activos)
+          'blue-dark': '#B91C1C',   // hover del acento
+          green:       '#16A34A',   // envío gratis, stock ok
+          red:         '#DC2626',   // sin stock, errores
+          bg:          '#F5F6F8',   // fondo general
+          border:      '#E3E6EA',   // bordes de cards
+          text:        '#1A1D23',   // texto principal
+          muted:       '#6B7280',   // texto secundario
+          dark:        '#1F2937',   // header/footer oscuro
         },
-        // Racing palette (dark estética)
+        // Paleta oscura conservada (BuscadorPorMoto, banners WA, etc.)
         carbon:   '#09090B',
         graphite: '#111118',
         plate:    '#1C1C26',
         steel:    '#28283A',
-        // Rojo vivaz
-        'avila': {
+        avila: {
           red:    '#DC2626',
           'red-v':'#EF4444',
           yellow: '#F59E0B',
@@ -39,7 +37,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans:    ['Inter', 'system-ui', 'sans-serif'],
         display: ['Inter', 'system-ui', 'sans-serif'],
       },
       keyframes: {
@@ -85,6 +83,10 @@ export default {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%':      { transform: 'translateY(-6px)' },
         },
+        drawerIn: {
+          '0%':   { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
       },
       animation: {
         'fade-in-up':   'fadeInUp 0.5s ease-out both',
@@ -99,17 +101,20 @@ export default {
         'slide-down':   'slideDown 0.3s ease-out both',
         'heartbeat':    'heartbeat 0.4s ease-in-out',
         'float':        'float 3s ease-in-out infinite',
+        'drawer-in':    'drawerIn 0.25s ease-out both',
       },
       backgroundImage: {
-        'shimmer-card':  'linear-gradient(90deg, #1C1C26 25%, #28283A 50%, #1C1C26 75%)',
+        'shimmer-card':  'linear-gradient(90deg, #f0f1f3 25%, #e4e6ea 50%, #f0f1f3 75%)',
         'shimmer-light': 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
         'red-glow':      'radial-gradient(ellipse at center, rgba(220,38,38,0.15) 0%, transparent 70%)',
         'hero-gradient': 'linear-gradient(135deg, #09090B 0%, #1C0A0A 50%, #09090B 100%)',
       },
       boxShadow: {
+        'card':        '0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)',
+        'card-hover':  '0 4px 16px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)',
         'red-glow':    '0 0 20px rgba(220,38,38,0.4), 0 0 60px rgba(220,38,38,0.1)',
         'red-glow-sm': '0 0 10px rgba(220,38,38,0.3)',
-        'card-hover':  '0 20px 40px rgba(0,0,0,0.2)',
+        'panel':       '0 20px 40px rgba(0,0,0,0.2)',
         'dark':        '0 4px 20px rgba(0,0,0,0.5)',
       },
     },

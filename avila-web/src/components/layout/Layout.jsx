@@ -10,7 +10,7 @@ const WA_ICON = (
   </svg>
 )
 
-const RUTAS_SIN_WA = ['/checkout', '/confirmacion']
+const RUTAS_SIN_WA = ['/checkout', '/confirmacion', '/producto']
 
 export default function Layout() {
   const { pathname } = useLocation()

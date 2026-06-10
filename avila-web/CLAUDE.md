@@ -365,3 +365,43 @@ avila-web/
 - WhatsApp del local: pendiente confirmar número real (usar `549XXXXXXXXXX` hasta tenerlo)
 - Dominio objetivo: avilamotorepuestos.com.ar (pendiente)
 - Logo: usar `public/logo.png` (pendiente que el usuario provea el archivo)
+
+---
+
+### ✅ Etapa 10 — Rediseño visual orientado a conversión (COMPLETA)
+
+**Paleta actualizada** (`tailwind.config.js`):
+- `brand-blue`: `#E11D2A` (acento principal — CTAs, precios, links activos)
+- `brand-blue-dark`: `#B91C1C` (hover)
+- `brand-bg`: `#F5F6F8` (fondo general)
+- `brand-border`: `#E3E6EA` (bordes)
+- `brand-text`: `#1A1D23` (texto principal)
+
+**Cambios por archivo:**
+- [x] **`tailwind.config.js`**: paleta nueva + sombras `card`/`card-hover` para tema claro + animación `drawer-in`
+- [x] **`src/index.css`**: scrollbar claro, skeleton-light actualizado, nuevas utilidades `.filter-label`, `.filter-btn`, `.scrollbar-hide`
+- [x] **`Header.jsx`**: fondo blanco, buscador central con autocompletado (`HeaderSearch`), barra de categorías (desktop), mobile = búsqueda en segunda fila
+- [x] **`StockBadge.jsx`**: badges tema claro (verde/ámbar/rojo sobre fondo blanco)
+- [x] **`ProductCard.jsx`**: precio `text-xl font-black`, badge "Envío gratis" cuando precio ≥ `ENVIO_GRATIS_DESDE`, placeholder claro, hover sutil `-translate-y-1`
+- [x] **`ProductCardSkeleton.jsx`**: skeleton claro consistente
+- [x] **`CatalogoPage.jsx`**: layout dos columnas (sidebar + main), sidebar sticky con filtros (categoría como botones, marca select, precio min/max, badge moto activa), drawer mobile con backdrop + animación, barra de estado con contador + selector ordenamiento
+- [x] **`ProductoPage.jsx`**: precio `text-4xl font-black`, trust badges en grid 2×2, panel info sticky en desktop (`sticky top-[calc(...)]`), badge "Envío gratis" si aplica
+- [x] **`HomePage.jsx`**: hero oscuro comercial (no racing), buscador grande central, chips de categorías, trust signals en banda blanca horizontal. Eliminado hero racing (85vh).
+- [x] **`Footer.jsx`**: limpieza tipográfica, bullets más sutiles
+- [x] **`BuscadorPorMoto.jsx`**: selects con fondo semitransparente (`rgba(255,255,255,0.06)`) para mejorar lectura en la sección oscura
+
+**Clases Tailwind que NO deben tocarse** (secciones oscuras conservadas):
+- `bg-carbon`, `bg-graphite`, `bg-plate`, `bg-steel`, `speed-lines`, `carbon-pattern`
+- `BuscadorPorMoto`, `BrandMarquee`, banner WhatsApp de Home → siguen usando tema oscuro intencional
+
+### ✅ Test Etapa 10 — PASÓ (2026-06-10)
+- Build producción: 0 errores, 341KB JS / 52KB CSS ✅
+- Header desktop: blanco, buscador central, barra categorías, badges carrito/favoritos ✅
+- Header mobile: logo + íconos + hamburguesa, búsqueda en segunda fila ✅
+- Hero: oscuro comercial, buscador grande, chips categorías, trust signals blancos ✅
+- Catálogo desktop: sidebar filtros (Categoría/Marca/Precio), grilla 2→3→4 cols, contador + ordenamiento ✅
+- ProductCard: precio grande rojo, badges "En stock"/"Últimas N" en tema claro ✅
+- Catálogo mobile: botón "Filtros", grilla 2 cols ✅
+- Drawer mobile: panel izquierdo animado, filtros completos, CTA "Ver N productos" ✅
+- ProductoPage: precio $4.800 en rojo grande, "Últimas 3 unidades", botones prominentes, trust 2×2 ✅
+- Sin errores de consola en ninguna página ✅

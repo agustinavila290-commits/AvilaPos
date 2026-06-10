@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCarrito } from '../../context/CarritoContext'
 import { useFavoritos } from '../../context/FavoritosContext'
-import { WA_NUMBER } from '../../config'
+import { WA_NUMBER, ENVIO_GRATIS_DESDE } from '../../config'
 import StockBadge from '../ui/StockBadge'
 
 const WA_SVG = (
@@ -14,7 +14,7 @@ const WA_SVG = (
 function HeartIcon({ filled }) {
   return (
     <svg
-      className={`w-4 h-4 transition-all duration-200 ${filled ? 'fill-brand-blue text-brand-blue scale-110' : 'text-gray-400 fill-none'}`}
+      className={`w-3.5 h-3.5 transition-all duration-200 ${filled ? 'fill-brand-blue text-brand-blue scale-110' : 'text-brand-muted fill-none'}`}
       viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
     >
       <path strokeLinecap="round" strokeLinejoin="round"
@@ -23,16 +23,14 @@ function HeartIcon({ filled }) {
   )
 }
 
-// Placeholder visual con patrón de carbono
 function ProductPlaceholder({ nombre }) {
   return (
-    <div className="w-full h-full bg-gradient-to-br from-plate to-graphite carbon-pattern
-                    flex flex-col items-center justify-center gap-2">
-      <svg className="w-12 h-12 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center gap-2 border-b border-brand-border">
+      <svg className="w-10 h-10 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
-      <span className="text-[9px] text-white/25 font-medium text-center px-2 leading-tight line-clamp-2 uppercase tracking-wide">
+      <span className="text-[9px] text-gray-300 font-medium text-center px-2 leading-tight line-clamp-2 uppercase tracking-wide">
         {nombre}
       </span>
     </div>
@@ -47,6 +45,7 @@ export default function ProductCard({ producto }) {
 
   const precio = parseFloat(producto.precio_web)
   const sinStock = producto.stock <= 0
+  const envioGratis = precio >= ENVIO_GRATIS_DESDE
 
   const nombre = producto.nombre_completo.charAt(0).toUpperCase() + producto.nombre_completo.slice(1).toLowerCase()
   const marca = producto.marca ? producto.marca.toUpperCase() : ''
@@ -74,51 +73,52 @@ export default function ProductCard({ producto }) {
   return (
     <Link
       to={`/producto/${producto.id}`}
-      className="group relative bg-white rounded-2xl border border-brand-border flex flex-col overflow-hidden
-                 hover:-translate-y-2 hover:shadow-xl hover:shadow-black/12 hover:border-brand-blue/20
-                 transition-all duration-300 ease-out
+      className="group relative bg-white rounded-xl border border-brand-border flex flex-col overflow-hidden
+                 hover:-translate-y-1 hover:shadow-card-hover hover:border-brand-blue/20
+                 transition-all duration-200 ease-out
                  focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
     >
       {/* IMAGEN */}
-      <div className="relative aspect-square overflow-hidden bg-gray-50">
-        {producto.imagen_url ? (
-          <img
-            src={producto.imagen_url}
-            alt={nombre}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
-            style={{ '--tw-scale-x': 'var(--hover-scale, 1)', '--tw-scale-y': 'var(--hover-scale, 1)' }}
-          />
-        ) : (
-          <ProductPlaceholder nombre={nombre} />
-        )}
+      <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden bg-white">
+        {producto.imagen_url
+          ? <img
+              src={producto.imagen_url}
+              alt={nombre}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400 ease-out"
+            />
+          : <ProductPlaceholder nombre={nombre} />
+        }
 
-        {/* Overlay hover sutil */}
-        <div className="absolute inset-0 bg-carbon/0 group-hover:bg-carbon/5 transition-colors duration-300" />
-
-        {/* Badge stock */}
-        <div className="absolute top-2 left-2">
+        {/* Badges sobre la imagen */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
           <StockBadge stock={producto.stock} />
+          {envioGratis && !sinStock && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full
+                             bg-green-600 text-white">
+              🚚 Envío gratis
+            </span>
+          )}
         </div>
 
         {/* Botón favorito */}
         <button
           onClick={handleFavorito}
           aria-label={favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md
-                      transition-all duration-200
+          className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                      shadow-card transition-all duration-200 z-10
                       ${favAnimate ? 'scale-125' : 'hover:scale-110'}
-                      ${favorito ? 'bg-brand-blue' : 'bg-white/90 hover:bg-white'}`}
+                      ${favorito ? 'bg-brand-blue' : 'bg-white/95 hover:bg-white'}`}
         >
           <HeartIcon filled={favorito} />
         </button>
       </div>
 
       {/* INFO */}
-      <div className="flex flex-col flex-1 p-3 gap-1.5">
+      <div className="flex flex-col flex-1 p-3 gap-1">
         {/* Marca */}
         {marca && (
-          <span className="text-[10px] font-black text-brand-muted tracking-widest uppercase leading-none">
+          <span className="text-[10px] font-black text-brand-muted tracking-wider uppercase leading-none">
             {marca}
           </span>
         )}
@@ -129,24 +129,24 @@ export default function ProductCard({ producto }) {
           {nombre}
         </p>
 
-        {/* Compatibilidad */}
+        {/* Compatibilidad motos */}
         {producto.motos_compatibles?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-0.5">
             {producto.motos_compatibles.slice(0, 2).map(m => (
-              <span key={m.id} className="text-[10px] bg-red-50 text-brand-blue border border-red-200
-                                          rounded-full px-2 py-0.5 leading-none font-medium">
+              <span key={m.id} className="text-[9px] bg-red-50 text-brand-blue border border-red-200
+                                          rounded-full px-1.5 py-0.5 leading-none font-medium">
                 {m.marca} {m.modelo}
               </span>
             ))}
             {producto.motos_compatibles.length > 2 && (
-              <span className="text-[10px] text-brand-muted">+{producto.motos_compatibles.length - 2}</span>
+              <span className="text-[9px] text-brand-muted">+{producto.motos_compatibles.length - 2}</span>
             )}
           </div>
         )}
 
         {/* Precio */}
-        <p className={`font-black text-lg leading-none mt-auto pt-1.5
-                       ${sinStock ? 'text-gray-300 line-through text-sm' : 'text-brand-blue'}`}>
+        <p className={`font-black text-xl leading-none mt-auto pt-1.5
+                       ${sinStock ? 'text-gray-300 line-through text-base' : 'text-brand-blue'}`}>
           ${precio.toLocaleString('es-AR')}
         </p>
 
@@ -157,32 +157,27 @@ export default function ProductCard({ producto }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="mt-1.5 w-full flex items-center justify-center gap-1.5
-                       border border-avila-green text-avila-green text-xs font-bold py-2.5 rounded-xl
-                       hover:bg-avila-green hover:text-white transition-all duration-200 active:scale-95"
+            className="mt-1 w-full flex items-center justify-center gap-1.5
+                       border border-brand-green text-brand-green text-xs font-bold py-2 rounded-lg
+                       hover:bg-green-50 transition-all duration-200 active:scale-95"
           >
-            {WA_SVG} Consultar disponibilidad
+            {WA_SVG} Consultar
           </a>
         ) : (
           <button
             onClick={agregarAlCarrito}
             disabled={adding}
-            className={`mt-1.5 w-full text-sm font-bold py-2.5 rounded-xl
+            className={`mt-1 w-full text-xs font-black py-2 rounded-lg
                         transition-all duration-200 active:scale-95
                         ${adding
-                          ? 'bg-avila-green text-white'
-                          : 'bg-brand-blue hover:bg-brand-blue-dark text-white hover:shadow-md hover:shadow-brand-blue/30'
+                          ? 'bg-brand-green text-white'
+                          : 'bg-brand-blue hover:bg-brand-blue-dark text-white'
                         }`}
           >
-            {adding ? '✓ Agregado' : 'Agregar al carrito'}
+            {adding ? '✓ Agregado' : 'Agregar'}
           </button>
         )}
       </div>
-
-      {/* Borde inferior rojo animado */}
-      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-blue
-                      origin-left scale-x-0 group-hover:scale-x-100
-                      transition-transform duration-400 ease-out" />
     </Link>
   )
 }

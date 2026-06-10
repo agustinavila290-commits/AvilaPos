@@ -11,11 +11,11 @@
   }
   * { @apply box-border; }
 
-  /* Scrollbar racing */
+  /* Scrollbar limpio */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #09090B; }
-  ::-webkit-scrollbar-thumb { background: #DC2626; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #EF4444; }
+  ::-webkit-scrollbar-track { background: #F5F6F8; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@
            hover:bg-brand-blue-dark active:scale-95
            transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/50;
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40;
   }
 
   .btn-secondary {
@@ -54,7 +54,7 @@
 
   /* Cards */
   .card {
-    @apply bg-white rounded-xl border border-brand-border shadow-sm;
+    @apply bg-white rounded-xl border border-brand-border shadow-card;
   }
 
   .card-dark {
@@ -63,14 +63,14 @@
 
   .card-racing {
     @apply bg-plate border border-white/10 rounded-2xl overflow-hidden
-           hover:-translate-y-1 hover:shadow-dark transition-all duration-300;
+           hover:-translate-y-1 hover:shadow-panel transition-all duration-300;
   }
 
   /* Input */
   .input {
-    @apply w-full border border-brand-border rounded-lg px-3 py-2 text-brand-text
-           placeholder:text-brand-muted bg-white
-           focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent
+    @apply w-full border border-brand-border rounded-lg px-3 py-2 text-brand-text bg-white
+           placeholder:text-brand-muted text-sm
+           focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue
            transition-all duration-200;
   }
 
@@ -81,15 +81,16 @@
            transition-all duration-200 appearance-none;
   }
 
-  /* Skeleton shimmer */
-  .skeleton-dark {
-    background: linear-gradient(90deg, #1C1C26 25%, #252535 50%, #1C1C26 75%);
+  /* Skeleton shimmer — tema claro */
+  .skeleton-light {
+    background: linear-gradient(90deg, #f0f1f3 25%, #e4e6ea 50%, #f0f1f3 75%);
     background-size: 400% 100%;
-    animation: shimmer 2s linear infinite;
+    animation: shimmer 1.6s linear infinite;
   }
 
-  .skeleton-light {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  /* Skeleton shimmer — tema oscuro (BuscadorPorMoto etc.) */
+  .skeleton-dark {
+    background: linear-gradient(90deg, #1C1C26 25%, #252535 50%, #1C1C26 75%);
     background-size: 400% 100%;
     animation: shimmer 2s linear infinite;
   }
@@ -108,10 +109,7 @@
     will-change: transform;
   }
 
-  .marquee-track:hover {
-    animation-play-state: paused;
-  }
-
+  .marquee-track:hover { animation-play-state: paused; }
   .marquee-track-fast { animation-duration: 16s; }
   .marquee-track-slow { animation-duration: 40s; }
 
@@ -121,7 +119,25 @@
     animation: pulseWa 2.5s ease-in-out infinite;
   }
 
-  /* Racing section divider */
+  /* Sidebar filter label */
+  .filter-label {
+    @apply text-[11px] font-black text-brand-text uppercase tracking-wider mb-2;
+  }
+
+  /* Filter button (sidebar) */
+  .filter-btn {
+    @apply w-full text-left text-sm px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer;
+  }
+
+  .filter-btn-active {
+    @apply bg-red-50 text-brand-blue font-semibold;
+  }
+
+  .filter-btn-inactive {
+    @apply text-brand-muted hover:text-brand-text hover:bg-brand-bg;
+  }
+
+  /* Sección conservada (oscura) */
   .section-clip-bottom {
     clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
     padding-bottom: 3rem;
@@ -138,7 +154,7 @@
 ────────────────────────────────────────────────────────── */
 @layer utilities {
 
-  /* Speed lines overlay (decorative) */
+  /* Speed lines overlay (secciones oscuras) */
   .speed-lines {
     background-image: repeating-linear-gradient(
       -60deg,
@@ -149,27 +165,12 @@
     );
   }
 
-  /* Carbon fiber pattern */
+  /* Carbon fiber pattern (secciones oscuras) */
   .carbon-pattern {
     background-image:
       linear-gradient(0deg, transparent 24%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.03) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03) 76%, transparent 77%),
       linear-gradient(90deg, transparent 24%, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.03) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.03) 75%, rgba(255,255,255,0.03) 76%, transparent 77%);
     background-size: 30px 30px;
-  }
-
-  /* Red glow border */
-  .border-glow-red {
-    border-color: #DC2626;
-    box-shadow: 0 0 12px rgba(220,38,38,0.3), inset 0 0 12px rgba(220,38,38,0.05);
-  }
-
-  /* Elevación al hover */
-  .hover-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
   }
 
   /* Texto con gradiente rojo */
@@ -179,4 +180,20 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Hover lift sutil */
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  }
+
+  /* Ocultar scrollbar manteniendo funcionalidad */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }

@@ -26,15 +26,17 @@ function SelectField({ label, value, onChange, disabled, placeholder, children }
           value={value}
           onChange={e => onChange(e.target.value)}
           disabled={disabled}
-          className="w-full rounded-xl border-2 border-white/10 bg-plate text-white
+          className="w-full rounded-xl border-2 border-white/15 bg-white/8 text-white
                      pl-4 pr-9 py-3 text-sm font-medium
-                     focus:outline-none focus:border-brand-blue/60 focus:ring-0
+                     focus:outline-none focus:border-brand-blue/70 focus:ring-0
                      disabled:opacity-40 disabled:cursor-not-allowed
                      appearance-none cursor-pointer
                      transition-colors duration-200
-                     hover:border-white/20"
+                     hover:border-white/30
+                     [background:rgba(255,255,255,0.06)]"
+          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
         >
-          <option value="" className="bg-plate text-gray-400">{placeholder}</option>
+          <option value="" style={{ background: '#1C1C26', color: '#9CA3AF' }}>{placeholder}</option>
           {children}
         </select>
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">

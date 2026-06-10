@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { tiendaApi } from '../../services/api'
 import { WA_NUMBER, SITIO } from '../../config'
@@ -9,10 +9,7 @@ import BuscadorPorMoto from '../../components/tienda/BuscadorPorMoto'
 import BrandMarquee from '../../components/ui/BrandMarquee'
 import CategoryShowcase from '../../components/ui/CategoryShowcase'
 import AnimatedSection from '../../components/ui/AnimatedSection'
-import WhatsAppCTA from '../../components/ui/WhatsAppCTA'
 
-// ── Marcas de motos ─────────────────────────────────────────────────────────
-// Cargar logos en: public/assets/brands/motos/{nombre}.png
 const MARCAS_MOTOS = [
   { nombre: 'Honda',    logo: '/assets/brands/motos/honda.png' },
   { nombre: 'Yamaha',   logo: '/assets/brands/motos/yamaha.png' },
@@ -28,8 +25,6 @@ const MARCAS_MOTOS = [
   { nombre: 'Suzuki',   logo: '/assets/brands/motos/suzuki.png' },
 ]
 
-// ── Marcas de repuestos ─────────────────────────────────────────────────────
-// Cargar logos en: public/assets/brands/repuestos/{nombre}.png
 const MARCAS_REPUESTOS = [
   { nombre: 'NGK',      logo: '/assets/brands/repuestos/ngk.png' },
   { nombre: 'Bosch',    logo: '/assets/brands/repuestos/bosch.png' },
@@ -45,14 +40,13 @@ const MARCAS_REPUESTOS = [
   { nombre: 'Ipone',    logo: '/assets/brands/repuestos/ipone.png' },
 ]
 
-// ── Trust items ─────────────────────────────────────────────────────────────
 const TRUST = [
-  { icon: '🏪', label: 'Retiro en local',          sub: SITIO.direccion },
-  { icon: '🚚', label: 'Envíos a todo el país',    sub: 'Coordinamos la entrega' },
-  { icon: '💳', label: 'Pago seguro',              sub: 'Mercado Pago y transferencia' },
-  { icon: '💬', label: 'Atención por WhatsApp',    sub: 'Respondemos rápido' },
-  { icon: '✅', label: 'Stock actualizado',         sub: 'Desde nuestro sistema' },
-  { icon: '🔧', label: 'Todas las marcas',          sub: 'Honda, Yamaha, Zanella…' },
+  { icon: '🏪', label: 'Retiro en local',        sub: SITIO.direccion },
+  { icon: '🚚', label: 'Envíos a todo el país',  sub: 'Coordinamos la entrega' },
+  { icon: '💳', label: 'Pago seguro',            sub: 'Mercado Pago y transferencia' },
+  { icon: '💬', label: 'Atención WhatsApp',      sub: 'Respondemos rápido' },
+  { icon: '✅', label: 'Stock actualizado',       sub: 'Desde nuestro sistema' },
+  { icon: '🔧', label: 'Todas las marcas',        sub: 'Honda, Yamaha, Zanella…' },
 ]
 
 const WA_SVG = (
@@ -72,6 +66,8 @@ export default function HomePage() {
   const [destacados, setDestacados] = useState([])
   const [loadingDestacados, setLoadingDestacados] = useState(true)
   const [vistos, setVistos] = useState([])
+  const [heroSearch, setHeroSearch] = useState('')
+  const heroInputRef = useRef(null)
 
   useEffect(() => {
     setVistos(getVistosRecientemente())
@@ -83,149 +79,136 @@ export default function HomePage() {
       .finally(() => setLoadingDestacados(false))
   }, [])
 
+  function handleHeroSearch(e) {
+    e.preventDefault()
+    if (heroSearch.trim()) {
+      navigate(`/catalogo?search=${encodeURIComponent(heroSearch.trim())}`)
+    } else {
+      navigate('/catalogo')
+    }
+  }
+
+  const topCategorias = categorias.slice(0, 8)
+
   return (
     <div>
       <SEO
-        title="Tu moto, tus repuestos — Avila Moto Repuestos"
+        title="Repuestos para tu moto — Avila Moto Repuestos"
         description="Buscá repuestos por modelo, consultá stock y comprá online con retiro en local o envío a todo el país."
       />
 
       {/* ══════════════════════════════════════════════════════════════
-          HERO RACING
-          Imagen: public/assets/ai/banners/hero-main.webp (opcional)
-          Sin imagen → fondo carbon/graphite con efecto visual
+          HERO COMERCIAL
       ══════════════════════════════════════════════════════════════ */}
-      <section
-        className="relative min-h-[85vh] md:min-h-[75vh] flex items-center overflow-hidden bg-carbon"
-        style={{
-          backgroundImage: 'url(/assets/ai/banners/hero-main.webp)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center 40%',
-        }}
-      >
-        {/* Overlay oscuro con degradado rojo sutil */}
-        <div className="absolute inset-0 bg-gradient-to-r from-carbon/98 via-carbon/85 to-carbon/50" />
-        <div className="absolute inset-0 bg-gradient-to-t from-carbon via-transparent to-transparent" />
+      <section className="bg-brand-text text-white">
+        <div className="max-w-4xl mx-auto px-4 py-10 md:py-14 text-center">
 
-        {/* Patrón de velocidad */}
-        <div className="absolute inset-0 speed-lines pointer-events-none" />
+          {/* Badge ubicación */}
+          <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20
+                          text-white/80 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
+            {SITIO.localidad}, {SITIO.provincia}
+          </div>
 
-        {/* Halo rojo */}
-        <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2
-                        w-[800px] h-[500px] rounded-full
-                        bg-gradient-radial from-brand-blue/10 to-transparent
-                        pointer-events-none blur-3xl" />
+          {/* Título */}
+          <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3">
+            Repuestos para tu moto<br />
+            <span className="text-brand-blue">en un solo lugar</span>
+          </h1>
+          <p className="text-white/60 text-base md:text-lg mb-8 max-w-lg mx-auto">
+            Comprá online con retiro en local o envío a todo el país.
+            Stock real actualizado desde nuestro sistema.
+          </p>
 
-        {/* Líneas decorativas diagonales */}
-        <div className="absolute right-0 top-0 bottom-0 w-32 overflow-hidden pointer-events-none hidden lg:block">
-          <div className="absolute inset-0 border-l border-brand-blue/10 -skew-x-6" />
-          <div className="absolute inset-0 border-l border-brand-blue/5 translate-x-8 -skew-x-6" />
-        </div>
+          {/* BUSCADOR HERO */}
+          <form
+            onSubmit={handleHeroSearch}
+            className="relative max-w-2xl mx-auto mb-6"
+          >
+            <svg
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-muted pointer-events-none"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+            </svg>
+            <input
+              ref={heroInputRef}
+              type="search"
+              value={heroSearch}
+              onChange={e => setHeroSearch(e.target.value)}
+              placeholder="¿Qué repuesto buscás?"
+              className="w-full bg-white text-brand-text rounded-xl pl-12 pr-[7rem] py-4 text-base
+                         shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-blue/40
+                         placeholder:text-brand-muted"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2
+                         bg-brand-blue hover:bg-brand-blue-dark text-white font-black
+                         px-5 py-2.5 rounded-lg text-sm transition-colors active:scale-95"
+            >
+              Buscar
+            </button>
+          </form>
 
-        {/* Acento rojo vertical */}
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-transparent via-brand-blue to-transparent" />
-
-        <div className="relative z-10 max-w-6xl mx-auto px-4 py-20 w-full">
-          <div className="max-w-2xl">
-            {/* Badge */}
-            <div className="animate-fade-in inline-flex items-center gap-2 mb-6
-                            bg-brand-blue/15 border border-brand-blue/30
-                            text-brand-blue text-xs font-black
-                            px-4 py-2 rounded-full uppercase tracking-[0.2em]">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse" />
-              {SITIO.localidad}, {SITIO.provincia}
-            </div>
-
-            {/* Título */}
-            <h1 className="animate-fade-in-up text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[1.0] tracking-tight mb-5"
-                style={{ animationDelay: '100ms' }}>
-              Tu moto,<br />
-              tus repuestos,<br />
-              <span className="text-gradient-red">en un solo lugar.</span>
-            </h1>
-
-            {/* Subtítulo */}
-            <p className="animate-fade-in-up text-gray-300 text-base md:text-xl mb-8 leading-relaxed max-w-xl"
-               style={{ animationDelay: '200ms' }}>
-              Buscá por modelo, encontrá productos compatibles y comprá online
-              con retiro en local o envío a todo el país.
-            </p>
-
-            {/* CTAs */}
-            <div className="animate-fade-in-up flex flex-col sm:flex-row gap-3 mb-10"
-                 style={{ animationDelay: '300ms' }}>
-              <a
-                href="#buscador-moto"
-                onClick={e => {
-                  e.preventDefault()
-                  document.getElementById('buscador-moto')?.scrollIntoView({ behavior: 'smooth' })
-                }}
-                className="inline-flex items-center justify-center gap-2
-                           bg-brand-blue hover:bg-brand-blue-dark
-                           text-white font-black px-8 py-4 rounded-xl text-base
-                           transition-all duration-200 hover:-translate-y-0.5
-                           hover:shadow-red-glow active:scale-95"
-              >
-                🏍️ Buscar por moto
-              </a>
+          {/* Chips de categorías rápidas */}
+          {topCategorias.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {topCategorias.map(c => (
+                <Link
+                  key={c.id}
+                  to={`/catalogo?categoria=${c.id}`}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white/80
+                             text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
+                >
+                  {c.nombre.charAt(0).toUpperCase() + c.nombre.slice(1).toLowerCase()}
+                </Link>
+              ))}
               <Link
                 to="/catalogo"
-                className="inline-flex items-center justify-center
-                           btn-ghost font-black px-8 py-4 text-base"
+                className="bg-brand-blue/20 hover:bg-brand-blue/30 border border-brand-blue/40 text-brand-blue
+                           text-xs font-bold px-3 py-1.5 rounded-full transition-colors"
               >
-                Ver catálogo
+                Ver todo →
               </Link>
-              <a
-                href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola! Quiero consultar repuestos para mi moto.')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2
-                           border-2 border-avila-green text-avila-green
-                           hover:bg-avila-green hover:text-white
-                           font-bold px-6 py-4 rounded-xl text-sm
-                           transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
-              >
-                {WA_SVG} WhatsApp
-              </a>
             </div>
-
-            {/* Stats */}
-            <div className="animate-fade-in-up flex gap-8 pt-6 border-t border-white/10"
-                 style={{ animationDelay: '400ms' }}>
-              {[
-                { valor: '+5.000', label: 'Productos' },
-                { valor: '12',     label: 'Marcas de motos' },
-                { valor: '100%',   label: 'Stock real' },
-              ].map(s => (
-                <div key={s.label}>
-                  <p className="text-2xl font-black text-white leading-none">{s.valor}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 font-medium">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Chevron scroll indicator */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
-          <svg className="w-6 h-6 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          )}
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          TRUST SIGNALS — banda horizontal
+          TRUST SIGNALS — scroll horizontal en mobile, grid en desktop
       ══════════════════════════════════════════════════════════════ */}
-      <section className="bg-graphite border-y border-white/5">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
-            {TRUST.map(item => (
-              <div key={item.label} className="flex items-center gap-2.5 py-3 px-2">
+      <section className="bg-white border-b border-brand-border">
+        {/* Mobile: scroll horizontal */}
+        <div className="sm:hidden overflow-x-auto scrollbar-hide">
+          <div className="flex items-stretch px-4 py-1" style={{ width: 'max-content' }}>
+            {TRUST.map((item, i) => (
+              <div
+                key={item.label}
+                className={`flex items-center gap-2 py-3 px-3 flex-shrink-0 ${
+                  i < TRUST.length - 1 ? 'border-r border-brand-border' : ''
+                }`}
+              >
                 <span className="text-xl flex-shrink-0">{item.icon}</span>
+                <div>
+                  <p className="text-xs font-bold text-brand-text leading-tight whitespace-nowrap">{item.label}</p>
+                  <p className="text-[10px] text-brand-muted leading-tight whitespace-nowrap">{item.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Desktop: grid */}
+        <div className="hidden sm:block max-w-6xl mx-auto px-4 py-2">
+          <div className="grid sm:grid-cols-3 lg:grid-cols-6 gap-px">
+            {TRUST.map(item => (
+              <div key={item.label} className="flex items-center gap-2.5 py-3 px-3">
+                <span className="text-lg flex-shrink-0">{item.icon}</span>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white leading-tight truncate">{item.label}</p>
-                  <p className="text-xs text-gray-500 leading-tight truncate">{item.sub}</p>
+                  <p className="text-xs font-bold text-brand-text leading-tight truncate">{item.label}</p>
+                  <p className="text-[10px] text-brand-muted leading-tight truncate">{item.sub}</p>
                 </div>
               </div>
             ))}
@@ -234,7 +217,7 @@ export default function HomePage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          BUSCADOR POR MOTO
+          BUSCADOR POR MOTO (sección oscura — keep)
       ══════════════════════════════════════════════════════════════ */}
       <BuscadorPorMoto />
 
@@ -256,7 +239,7 @@ export default function HomePage() {
       <CategoryShowcase categorias={categorias} />
 
       {/* ══════════════════════════════════════════════════════════════
-          MARCAS DE REPUESTOS — marquee (velocidad diferente)
+          MARCAS DE REPUESTOS — marquee
       ══════════════════════════════════════════════════════════════ */}
       <BrandMarquee
         title="Trabajamos con marcas reconocidas"
@@ -268,13 +251,13 @@ export default function HomePage() {
       />
 
       {/* ══════════════════════════════════════════════════════════════
-          MARCAS DEL CATÁLOGO (dinámicas de la API)
+          MARCAS DEL CATÁLOGO (dinámicas)
       ══════════════════════════════════════════════════════════════ */}
       {marcas.length > 0 && (
         <section className="bg-brand-bg py-10 px-4">
           <AnimatedSection>
             <div className="max-w-6xl mx-auto">
-              <p className="text-xs font-black text-brand-blue uppercase tracking-[0.2em] mb-2">Disponibles en stock</p>
+              <p className="text-xs font-black text-brand-blue uppercase tracking-[0.2em] mb-1">Disponibles en stock</p>
               <h2 className="text-xl font-black text-brand-text mb-5">Marcas en catálogo</h2>
               <div className="flex flex-wrap gap-2">
                 {marcas.slice(0, 20).map(m => (
@@ -283,7 +266,7 @@ export default function HomePage() {
                     onClick={() => navigate(`/catalogo?marca=${m.id}`)}
                     className="px-4 py-2 rounded-full border border-brand-border bg-white text-sm font-semibold
                                text-brand-muted hover:border-brand-blue hover:text-brand-blue hover:bg-red-50
-                               hover:shadow-sm transition-all duration-200 active:scale-95"
+                               hover:shadow-card transition-all duration-200 active:scale-95"
                   >
                     {m.nombre}
                   </button>
@@ -306,19 +289,19 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════════════
           PRODUCTOS DESTACADOS
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-14 px-4 bg-white">
+      <section className="py-12 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <AnimatedSection>
-            <div className="flex items-end justify-between mb-8">
+            <div className="flex items-end justify-between mb-6">
               <div>
                 <p className="text-xs font-black text-brand-blue uppercase tracking-[0.2em] mb-1">Disponibles ahora</p>
-                <h2 className="text-2xl md:text-3xl font-black text-brand-text">Productos en stock</h2>
+                <h2 className="text-2xl font-black text-brand-text">Productos en stock</h2>
               </div>
               <Link
                 to="/catalogo"
                 className="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-brand-blue
-                           border border-brand-blue rounded-xl px-5 py-2.5
-                           hover:bg-brand-blue hover:text-white transition-all duration-200"
+                           border border-brand-blue/30 rounded-xl px-4 py-2
+                           hover:bg-brand-blue hover:text-white hover:border-brand-blue transition-all duration-200"
               >
                 Ver todos →
               </Link>
@@ -326,20 +309,20 @@ export default function HomePage() {
           </AnimatedSection>
 
           {loadingDestacados ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
             </div>
           ) : destacados.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {destacados.map((p, i) => (
-                  <AnimatedSection key={p.id} delay={i * 55} direction="up">
+                  <AnimatedSection key={p.id} delay={i * 50} direction="up">
                     <ProductCard producto={p} />
                   </AnimatedSection>
                 ))}
               </div>
-              <div className="mt-8 text-center sm:hidden">
-                <Link to="/catalogo" className="btn-primary px-8 py-3 text-base inline-flex">
+              <div className="mt-6 text-center sm:hidden">
+                <Link to="/catalogo" className="btn-primary px-8 py-3 text-sm inline-flex">
                   Ver todo el catálogo →
                 </Link>
               </div>
@@ -356,8 +339,8 @@ export default function HomePage() {
       {vistos.length > 0 && (
         <section className="py-10 px-4 bg-brand-bg">
           <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-brand-text">Visto recientemente</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-brand-text">Visto recientemente</h2>
               <button
                 onClick={() => { localStorage.removeItem('avila_vistos'); setVistos([]) }}
                 className="text-xs text-brand-muted hover:text-brand-blue transition-colors"
@@ -365,7 +348,7 @@ export default function HomePage() {
                 Limpiar
               </button>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {vistos.slice(0, 4).map(p => <ProductCard key={p.id} producto={p} />)}
             </div>
           </div>
@@ -378,16 +361,16 @@ export default function HomePage() {
       <section className="relative bg-carbon overflow-hidden speed-lines">
         <div className="absolute inset-0 bg-gradient-to-r from-carbon to-graphite" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                        w-[800px] h-[200px] bg-red-glow pointer-events-none" />
-        <div className="relative z-10 max-w-4xl mx-auto px-4 py-16 text-center">
+                        w-[600px] h-[200px] bg-red-glow pointer-events-none" />
+        <div className="relative z-10 max-w-4xl mx-auto px-4 py-14 text-center">
           <AnimatedSection>
             <p className="text-xs font-black text-avila-green uppercase tracking-[0.2em] mb-3">
               Asesoramiento sin costo
             </p>
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-3 leading-tight">
-              ¿No sabés qué repuesto<br />lleva tu moto?
+            <h2 className="text-2xl md:text-3xl font-black text-white mb-3 leading-tight">
+              ¿No encontrás el repuesto<br />que buscás?
             </h2>
-            <p className="text-gray-400 text-lg mb-8 max-w-lg mx-auto">
+            <p className="text-gray-400 text-base mb-8 max-w-md mx-auto">
               Mandanos marca, modelo y año por WhatsApp y te ayudamos
               a encontrar exactamente lo que necesitás.
             </p>
@@ -396,7 +379,7 @@ export default function HomePage() {
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 bg-avila-green hover:bg-green-600
-                         text-white font-black px-10 py-4 rounded-xl text-base
+                         text-white font-black px-8 py-4 rounded-xl text-base
                          transition-all duration-200 hover:-translate-y-1
                          hover:shadow-xl hover:shadow-green-900/50 active:scale-95"
             >
