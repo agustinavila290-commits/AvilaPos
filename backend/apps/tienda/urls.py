@@ -11,6 +11,7 @@ urlpatterns = [
     path('puntos-retiro/', views.puntos_retiro_list),
     # Pedidos (público, pero enlaza al cliente si está logueado)
     path('pedidos/', views.pedido_create),
+    path('pedidos/<int:numero>/estado/', views.pedido_status),
     # Mercado Pago
     path('mercadopago/preferencia/', views.mercadopago_crear_preferencia),
     path('mercadopago/webhook/', views.mercadopago_webhook),
@@ -23,6 +24,7 @@ urlpatterns = [
     # Admin POS (requiere auth de staff Django)
     path('admin/pedidos/', views.admin_pedidos_list),
     path('admin/pedidos/<int:pk>/', views.admin_pedido_detail),
+    path('admin/pedidos/<int:pk>/estado/', views.admin_pedido_estado),
     # POS — compatibilidad por moto (lectura)
     path('modelos-moto/<int:moto_id>/productos/', views.productos_por_moto),
     # Gestión de modelos de moto (admin POS)

@@ -25,6 +25,7 @@ export const tiendaApi = {
   getPuntosRetiro: () => api.get('/puntos-retiro/'),
   crearPedido: (data) => api.post('/pedidos/', data),
   crearPreferenciaMercadoPago: (data) => api.post('/mercadopago/preferencia/', data),
+  getPedidoEstado: (numero) => api.get(`/pedidos/${numero}/estado/`),
 }
 
 export const authApi = {

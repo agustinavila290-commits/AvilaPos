@@ -16,10 +16,18 @@ class Venta(models.Model):
         EFECTIVO = 'EFECTIVO', 'Efectivo'
         TRANSFERENCIA = 'TRANSFERENCIA', 'Transferencia'
         TARJETA = 'TARJETA', 'Tarjeta'
-    
+        MERCADOPAGO = 'MERCADOPAGO', 'Mercado Pago'
+
     class EstadoVenta(models.TextChoices):
+        # Estados POS (venta presencial)
         COMPLETADA = 'COMPLETADA', 'Completada'
         ANULADA = 'ANULADA', 'Anulada'
+        # Estados web (ciclo de vida de pedido online)
+        PENDIENTE_PAGO = 'PENDIENTE_PAGO', 'Pendiente de pago'
+        PAGO_CONFIRMADO = 'PAGO_CONFIRMADO', 'Pago confirmado'
+        EN_PREPARACION = 'EN_PREPARACION', 'En preparación'
+        ENVIADO = 'ENVIADO', 'Enviado'
+        ENTREGADO = 'ENTREGADO', 'Entregado'
     
     # Numeración automática
     numero = models.IntegerField(

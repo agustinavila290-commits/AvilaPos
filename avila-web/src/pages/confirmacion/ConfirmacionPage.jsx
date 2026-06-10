@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { WA_MESSAGES } from '../../config'
+import { WA_MESSAGES, BANK_INFO } from '../../config'
 import { useAuth } from '../../context/AuthContext'
+import { tiendaApi } from '../../services/api'
 import SEO from '../../components/SEO'
 
 const WA_SVG = (
@@ -9,68 +11,77 @@ const WA_SVG = (
   </svg>
 )
 
-const INSTRUCCIONES = {
-  transferencia: {
+// Config de visualización según estado backend
+const ESTADO_CONFIG = {
+  PENDIENTE_PAGO: {
     titulo: '¡Pedido creado!',
-    subtitulo: 'Tu pedido fue registrado. Realizá la transferencia para confirmarlo.',
-    colorTitulo: 'text-brand-blue',
-    colorFondo: 'bg-blue-50 border-blue-200',
-    icono: '🏦',
-    pasos: [
-      'Realizá la transferencia con los datos bancarios que te enviamos.',
-      'Enviá el comprobante por WhatsApp indicando tu número de pedido.',
-      'Una vez acreditado el pago, coordinamos la entrega o el retiro.',
-    ],
-    mostrarWaTransferencia: true,
+    subtitulo: 'Tu pedido fue registrado. Realizá el pago para confirmarlo.',
+    color: 'text-brand-blue',
+    fondo: 'bg-blue-50 border-blue-200',
+    icono: '📋',
   },
-  efectivo: {
-    titulo: '¡Pedido creado!',
-    subtitulo: 'Tu pedido fue registrado. Podés abonarlo al retirar en el local.',
-    colorTitulo: 'text-brand-green',
-    colorFondo: 'bg-green-50 border-green-200',
-    icono: '💵',
-    pasos: [
-      'Acercate a Av. Pte. Castillo 1165 con tu número de pedido.',
-      'Abonás en efectivo al momento del retiro.',
-      'Ante cualquier duda, consultanos por WhatsApp.',
-    ],
-  },
-  mercadopago: {
-    titulo: '¡Pago aprobado!',
-    subtitulo: 'Tu pago con Mercado Pago fue procesado correctamente.',
-    colorTitulo: 'text-brand-green',
-    colorFondo: 'bg-green-50 border-green-200',
+  PAGO_CONFIRMADO: {
+    titulo: '¡Pago recibido!',
+    subtitulo: 'Tu pago fue confirmado. Estamos preparando tu pedido.',
+    color: 'text-brand-green',
+    fondo: 'bg-green-50 border-green-200',
     icono: '✅',
-    pasos: [
+  },
+  EN_PREPARACION: {
+    titulo: 'En preparación',
+    subtitulo: 'Tu pedido está siendo preparado.',
+    color: 'text-indigo-600',
+    fondo: 'bg-indigo-50 border-indigo-200',
+    icono: '📦',
+  },
+  ENVIADO: {
+    titulo: '¡En camino!',
+    subtitulo: 'Tu pedido fue enviado.',
+    color: 'text-purple-600',
+    fondo: 'bg-purple-50 border-purple-200',
+    icono: '🚚',
+  },
+  ENTREGADO: {
+    titulo: '¡Entregado!',
+    subtitulo: 'Tu pedido fue entregado exitosamente.',
+    color: 'text-brand-green',
+    fondo: 'bg-green-50 border-green-200',
+    icono: '🎉',
+  },
+  ANULADA: {
+    titulo: 'Pedido cancelado',
+    subtitulo: 'Este pedido fue cancelado. Contactanos si necesitás ayuda.',
+    color: 'text-brand-red',
+    fondo: 'bg-red-50 border-red-200',
+    icono: '❌',
+  },
+}
+
+// Instrucciones según método de pago
+function getInstrucciones(metodo, estado) {
+  if (metodo === 'MERCADOPAGO') {
+    if (estado === 'PAGO_CONFIRMADO') return [
       'Recibirás una notificación de Mercado Pago con el comprobante.',
       'Estamos preparando tu pedido.',
       'Coordinamos la entrega o el retiro en breve.',
-    ],
-  },
-  'mercadopago-pending': {
-    titulo: 'Pago pendiente',
-    subtitulo: 'Tu pago está pendiente de confirmación por Mercado Pago.',
-    colorTitulo: 'text-amber-600',
-    colorFondo: 'bg-amber-50 border-amber-200',
-    icono: '⏳',
-    pasos: [
+    ]
+    return [
       'Mercado Pago está verificando tu pago. Puede demorar unos minutos.',
       'Te notificaremos cuando se acredite.',
-      'Si tenés dudas, contactanos por WhatsApp.',
-    ],
-  },
-  'mercadopago-error': {
-    titulo: 'Pedido registrado',
-    subtitulo: 'No pudimos confirmar el pago. Podés intentar nuevamente o consultar por WhatsApp.',
-    colorTitulo: 'text-brand-blue',
-    colorFondo: 'bg-blue-50 border-blue-200',
-    icono: '📋',
-    pasos: [
-      'Tu pedido fue registrado correctamente.',
-      'Podés pagar por transferencia o en efectivo al retirar.',
-      'Contactanos por WhatsApp para coordinar.',
-    ],
-  },
+      'Podés consultar el estado de tu pedido por WhatsApp.',
+    ]
+  }
+  if (metodo === 'EFECTIVO') return [
+    'Acercate a Av. Pte. Castillo 1165 con tu número de pedido.',
+    'Abonás en efectivo al momento del retiro.',
+    'Ante cualquier duda, consultanos por WhatsApp.',
+  ]
+  // Transferencia (default)
+  return [
+    `Realizá la transferencia al alias ${BANK_INFO.alias} (${BANK_INFO.banco}).`,
+    'Enviá el comprobante por WhatsApp indicando tu número de pedido.',
+    'Una vez acreditado el pago, coordinamos la entrega o el retiro.',
+  ]
 }
 
 export default function ConfirmacionPage() {
@@ -78,77 +89,115 @@ export default function ConfirmacionPage() {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
 
-  const pago = searchParams.get('pago') || 'transferencia'
-  const status = searchParams.get('status')
-  const errorMp = searchParams.get('error')
+  const pagoParam  = searchParams.get('pago') || 'transferencia'
+  const statusParam = searchParams.get('status')
+  const errorMp    = searchParams.get('error')
   const nombreCliente = decodeURIComponent(searchParams.get('nombre') || user?.nombre || '')
 
-  let clave = pago
-  if (pago === 'mercadopago') {
-    if (status === 'pending') clave = 'mercadopago-pending'
-    else if (status === 'failure' || errorMp === 'mp') clave = 'mercadopago-error'
-    else clave = 'mercadopago'
-  }
+  // Estado real del pedido desde la API
+  const [pedidoData, setPedidoData] = useState(null)
+  const [loadingEstado, setLoadingEstado] = useState(true)
 
-  const info = INSTRUCCIONES[clave] || INSTRUCCIONES.transferencia
+  useEffect(() => {
+    if (!id) { setLoadingEstado(false); return }
+    tiendaApi.getPedidoEstado(id)
+      .then(r => setPedidoData(r.data))
+      .catch(() => {})
+      .finally(() => setLoadingEstado(false))
+  }, [id])
 
-  const waUrl = info.mostrarWaTransferencia && nombreCliente
+  // Determinar estado y método a mostrar
+  const estado  = pedidoData?.estado || _inferirEstado(pagoParam, statusParam, errorMp)
+  const metodo  = pedidoData?.metodo_pago || _inferirMetodo(pagoParam)
+  const config  = ESTADO_CONFIG[estado] || ESTADO_CONFIG.PENDIENTE_PAGO
+  const pasos   = getInstrucciones(metodo, estado)
+
+  const waUrl = (metodo === 'TRANSFERENCIA' && estado === 'PENDIENTE_PAGO')
     ? WA_MESSAGES.pedidoTransferencia(id, nombreCliente)
     : WA_MESSAGES.consultarPedido(id)
 
+  const waLabel = (metodo === 'TRANSFERENCIA' && estado === 'PENDIENTE_PAGO')
+    ? 'Enviar comprobante por WhatsApp'
+    : 'Consultar por WhatsApp'
+
   return (
     <div className="max-w-xl mx-auto px-4 py-16">
-      <SEO title={`Pedido #${id} — ${info.titulo}`} />
+      <SEO title={`Pedido #${id} — ${config.titulo}`} />
       <div className="card p-8 text-center">
-        <div className="text-5xl mb-4">{info.icono}</div>
-        <h1 className={`text-2xl font-bold mb-2 ${info.colorTitulo}`}>{info.titulo}</h1>
-        <p className="text-brand-muted mb-1">{info.subtitulo}</p>
-        <p className="text-sm text-brand-muted mb-6">
-          Pedido <strong className="text-brand-text font-mono">#{id}</strong>
-        </p>
 
-        {/* Pasos */}
-        <div className={`border rounded-xl p-4 text-left mb-6 ${info.colorFondo}`}>
-          <p className="text-sm font-semibold text-brand-text mb-3">Próximos pasos:</p>
-          <ol className="space-y-2">
-            {info.pasos.map((paso, i) => (
-              <li key={i} className="flex gap-3 text-sm text-brand-muted">
-                <span className="w-5 h-5 bg-brand-blue text-white rounded-full text-xs flex items-center justify-center flex-shrink-0 font-bold mt-0.5">
-                  {i + 1}
-                </span>
-                {paso}
-              </li>
-            ))}
-          </ol>
-        </div>
+        {loadingEstado ? (
+          <div className="animate-pulse">
+            <div className="w-12 h-12 bg-gray-200 rounded-full mx-auto mb-4" />
+            <div className="h-6 bg-gray-200 rounded w-48 mx-auto mb-2" />
+            <div className="h-4 bg-gray-200 rounded w-64 mx-auto" />
+          </div>
+        ) : (
+          <>
+            <div className="text-5xl mb-4">{config.icono}</div>
+            <h1 className={`text-2xl font-bold mb-2 ${config.color}`}>{config.titulo}</h1>
+            <p className="text-brand-muted mb-1">{config.subtitulo}</p>
+            <p className="text-sm text-brand-muted mb-6">
+              Pedido <strong className="text-brand-text font-mono">#{id}</strong>
+            </p>
 
-        <div className="flex flex-col gap-3">
-          {/* Botón WhatsApp principal */}
-          <a
-            href={waUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 bg-brand-green hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-          >
-            {WA_SVG}
-            {info.mostrarWaTransferencia ? 'Enviar comprobante por WhatsApp' : 'Consultar por WhatsApp'}
-          </a>
+            {/* Próximos pasos */}
+            <div className={`border rounded-xl p-4 text-left mb-6 ${config.fondo}`}>
+              <p className="text-sm font-semibold text-brand-text mb-3">Próximos pasos:</p>
+              <ol className="space-y-2">
+                {pasos.map((paso, i) => (
+                  <li key={i} className="flex gap-3 text-sm text-brand-muted">
+                    <span className="w-5 h-5 bg-brand-blue text-white rounded-full text-xs flex items-center justify-center flex-shrink-0 font-bold mt-0.5">
+                      {i + 1}
+                    </span>
+                    {paso}
+                  </li>
+                ))}
+              </ol>
+            </div>
 
-          {/* Ver mi cuenta (si está logueado) */}
-          {user && (
-            <Link to="/mi-cuenta" className="btn-secondary py-2.5 text-sm">
-              Ver mis pedidos
-            </Link>
-          )}
+            <div className="flex flex-col gap-3">
+              {/* Botón WhatsApp principal */}
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 bg-brand-green hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+              >
+                {WA_SVG}
+                {waLabel}
+              </a>
 
-          <Link to="/catalogo" className="text-sm text-brand-muted hover:text-brand-text transition-colors py-1">
-            Ver catálogo →
-          </Link>
-          <Link to="/" className="text-sm text-brand-muted hover:text-brand-text transition-colors">
-            Volver al inicio
-          </Link>
-        </div>
+              {user && (
+                <Link to="/mi-cuenta" className="btn-secondary py-2.5 text-sm">
+                  Ver mis pedidos
+                </Link>
+              )}
+              <Link to="/catalogo" className="text-sm text-brand-muted hover:text-brand-text transition-colors py-1">
+                Ver catálogo →
+              </Link>
+              <Link to="/" className="text-sm text-brand-muted hover:text-brand-text transition-colors">
+                Volver al inicio
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
+}
+
+function _inferirEstado(pago, status, errorMp) {
+  if (pago === 'mercadopago') {
+    if (status === 'approved') return 'PAGO_CONFIRMADO'
+    if (status === 'pending')  return 'PENDIENTE_PAGO'
+    if (status === 'failure' || errorMp === 'mp') return 'PENDIENTE_PAGO'
+    return 'PAGO_CONFIRMADO'
+  }
+  return 'PENDIENTE_PAGO'
+}
+
+function _inferirMetodo(pago) {
+  if (pago === 'mercadopago')   return 'MERCADOPAGO'
+  if (pago === 'efectivo')      return 'EFECTIVO'
+  return 'TRANSFERENCIA'
 }

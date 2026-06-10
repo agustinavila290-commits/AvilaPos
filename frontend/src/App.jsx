@@ -42,6 +42,7 @@ import OrdenesCompra from './pages/OrdenesCompra'
 import NuevaOrdenCompra from './pages/NuevaOrdenCompra'
 import OrdenCompraDetalle from './pages/OrdenCompraDetalle'
 import GestionMotos from './pages/GestionMotos'
+import PedidosWeb from './pages/PedidosWeb'
 
 const routerFuture = {
   v7_startTransition: true,
@@ -272,6 +273,9 @@ function App() {
 
           {/* Gestión de motos */}
           <Route path="/motos" element={<ProtectedRoute requireAdmin><Layout><GestionMotos /></Layout></ProtectedRoute>} />
+
+          {/* Pedidos web */}
+          <Route path="/pedidos-web" element={<ProtectedRoute><Layout><PedidosWeb /></Layout></ProtectedRoute>} />
           
           <Route
             path="/compras/:id"

@@ -3,6 +3,7 @@ API pública de la tienda web (avila-web).
 Endpoints sin autenticación para catálogo y pedidos.
 Endpoints con auth para administrador.
 """
+import logging
 from decimal import Decimal
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,6 +11,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import models as db_models
 from django.core.paginator import Paginator
+from django.conf import settings
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 from apps.productos.models import VarianteProducto, Marca, Categoria, ProductoBase
 from apps.inventario.models import Deposito, Stock
@@ -24,6 +28,130 @@ from .auth import (
     generate_token, get_cliente_from_request,
     verify_google_token,
 )
+
+logger = logging.getLogger('apps')
+
+_METODO_LABELS = {
+    'MERCADOPAGO':   'Mercado Pago',
+    'TRANSFERENCIA': 'Transferencia bancaria',
+    'EFECTIVO':      'Efectivo',
+    'TARJETA':       'Tarjeta',
+}
+_ESTADO_LABELS = {
+    'PENDIENTE_PAGO':  'Pendiente de pago',
+    'PAGO_CONFIRMADO': 'Pago confirmado',
+    'EN_PREPARACION':  'En preparación',
+    'ENVIADO':         'Enviado',
+    'ENTREGADO':       'Entregado',
+    'COMPLETADA':      'Completada',
+    'ANULADA':         'Anulada',
+}
+
+
+def _enviar_emails_pedido(venta, datos_cliente, items_para_venta, tipo_entrega, direccion_envio):
+    """Envía email de confirmación al cliente y aviso al local."""
+    from urllib.parse import quote
+
+    items_ctx = []
+    for it in items_para_venta:
+        sub = (it['precio_unitario'] - it['descuento_unitario']) * it['cantidad']
+        items_ctx.append({
+            'nombre':   it['variante'].nombre_completo,
+            'codigo':   it['variante'].codigo,
+            'cantidad': it['cantidad'],
+            'precio':   f'{it["precio_unitario"]:,.2f}',
+            'subtotal': f'{sub:,.2f}',
+        })
+
+    total_fmt = f'{venta.total:,.2f}'
+    nombre_cliente = datos_cliente.get('nombre', '')
+    email_cliente  = datos_cliente.get('email', '')
+    telefono       = datos_cliente.get('telefono', '')
+    metodo         = venta.metodo_pago
+    wa_text        = quote(f'Hola! Quiero consultar mi pedido #{venta.numero}')
+
+    tipo_label = 'Retiro en local' if tipo_entrega == 'retiro' else 'Envío a domicilio'
+
+    ctx_cliente = {
+        'venta_numero':    venta.numero,
+        'nombre_cliente':  nombre_cliente,
+        'items':           items_ctx,
+        'total':           total_fmt,
+        'metodo_pago':     metodo,
+        'tipo_entrega':    tipo_entrega,
+        'direccion_envio': direccion_envio,
+        'bank_titular':    'Avila Marcelo Bernabe',
+        'bank_alias':      'avilaxxx',
+        'bank_banco':      'Mercado Pago',
+        'bank_cbu':        '',
+        'wa_text':         wa_text,
+    }
+    ctx_local = {
+        'venta_numero':      venta.numero,
+        'nombre_cliente':    nombre_cliente,
+        'email_cliente':     email_cliente,
+        'telefono_cliente':  telefono,
+        'items':             items_ctx,
+        'total':             total_fmt,
+        'metodo_pago_label': _METODO_LABELS.get(metodo, metodo),
+        'tipo_entrega_label': tipo_label,
+        'direccion_envio':   direccion_envio,
+    }
+
+    email_local = getattr(settings, 'EMAIL_LOCAL', '') or getattr(settings, 'EMAIL_HOST_USER', '')
+
+    try:
+        if email_cliente:
+            html_cliente = render_to_string('emails/confirmacion_pedido.html', ctx_cliente)
+            send_mail(
+                subject=f'Pedido #{venta.numero} recibido — Avila Moto Repuestos',
+                message=f'Tu pedido #{venta.numero} fue recibido. Total: ${total_fmt}',
+                from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else email_local,
+                recipient_list=[email_cliente],
+                html_message=html_cliente,
+                fail_silently=True,
+            )
+            logger.info(f'[Email] Confirmación enviada a {email_cliente} para pedido #{venta.numero}')
+    except Exception as e:
+        logger.warning(f'[Email] Error enviando confirmación al cliente: {e}')
+
+    try:
+        if email_local:
+            html_local = render_to_string('emails/aviso_pedido_local.html', ctx_local)
+            send_mail(
+                subject=f'🛒 Nuevo pedido web #{venta.numero} — ${total_fmt}',
+                message=f'Nuevo pedido web #{venta.numero} de {nombre_cliente}. Total: ${total_fmt}',
+                from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else email_local,
+                recipient_list=[email_local],
+                html_message=html_local,
+                fail_silently=True,
+            )
+            logger.info(f'[Email] Aviso de nuevo pedido enviado a {email_local}')
+    except Exception as e:
+        logger.warning(f'[Email] Error enviando aviso al local: {e}')
+
+
+def _enviar_email_estado(venta, email_cliente, nombre_cliente):
+    """Notifica al cliente cuando cambia el estado de su pedido."""
+    if not email_cliente:
+        return
+    estado_label = _ESTADO_LABELS.get(venta.estado, venta.estado)
+    try:
+        send_mail(
+            subject=f'Tu pedido #{venta.numero} — {estado_label}',
+            message=(
+                f'Hola {nombre_cliente},\n\n'
+                f'El estado de tu pedido #{venta.numero} cambió a: {estado_label}.\n\n'
+                f'Para consultas: https://wa.me/5493834625390\n\n'
+                f'Avila Moto Repuestos\nAv. Pte. Castillo 1165, Catamarca'
+            ),
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', getattr(settings, 'EMAIL_HOST_USER', '')),
+            recipient_list=[email_cliente],
+            fail_silently=True,
+        )
+        logger.info(f'[Email] Estado {venta.estado} notificado a {email_cliente} para pedido #{venta.numero}')
+    except Exception as e:
+        logger.warning(f'[Email] Error notificando estado: {e}')
 
 
 def _get_deposito_principal():
@@ -546,13 +674,67 @@ def mercadopago_crear_preferencia(request):
 @permission_classes([AllowAny])
 def mercadopago_webhook(request):
     """
-    Webhook de Mercado Pago (versión simplificada).
-
-    Por ahora solo acepta el payload y devuelve 200 OK para pruebas.
-    Más adelante se puede usar payment_id / topic para consultar el pago
-    real y actualizar el estado de la venta.
+    Webhook de Mercado Pago.
+    MP envía notificaciones cuando cambia el estado de un pago.
+    Docs: https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks
     """
-    # En entorno real se deberían validar tokens / firma y actualizar la venta.
+    import logging
+    logger = logging.getLogger('apps')
+
+    data = request.data or {}
+    topic = data.get('topic') or request.query_params.get('topic', '')
+    payment_id = data.get('data', {}).get('id') or request.query_params.get('id', '')
+
+    logger.info(f'[MP Webhook] topic={topic} payment_id={payment_id} data={data}')
+
+    if topic not in ('payment', 'merchant_order', ''):
+        return Response({'ok': True}, status=status.HTTP_200_OK)
+
+    if not payment_id:
+        return Response({'ok': True}, status=status.HTTP_200_OK)
+
+    token = getattr(__import__('django.conf', fromlist=['settings']).settings, 'MERCADOPAGO_ACCESS_TOKEN', '')
+    if not token:
+        logger.warning('[MP Webhook] Sin ACCESS_TOKEN configurado, ignorando notificación')
+        return Response({'ok': True}, status=status.HTTP_200_OK)
+
+    try:
+        import requests as req
+        resp = req.get(
+            f'https://api.mercadopago.com/v1/payments/{payment_id}',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            logger.warning(f'[MP Webhook] No se pudo consultar payment {payment_id}: {resp.status_code}')
+            return Response({'ok': True}, status=status.HTTP_200_OK)
+
+        pago = resp.json()
+        mp_status = pago.get('status', '')
+        external_ref = pago.get('external_reference', '')
+
+        logger.info(f'[MP Webhook] payment={payment_id} status={mp_status} ref={external_ref}')
+
+        if not external_ref:
+            return Response({'ok': True}, status=status.HTTP_200_OK)
+
+        try:
+            venta = Venta.objects.get(pk=int(external_ref))
+        except (Venta.DoesNotExist, ValueError):
+            return Response({'ok': True}, status=status.HTTP_200_OK)
+
+        if mp_status == 'approved' and venta.estado == Venta.EstadoVenta.PENDIENTE_PAGO:
+            venta.estado = Venta.EstadoVenta.PAGO_CONFIRMADO
+            venta.save(update_fields=['estado'])
+            logger.info(f'[MP Webhook] Venta #{venta.numero} → PAGO_CONFIRMADO')
+        elif mp_status in ('rejected', 'cancelled') and venta.estado == Venta.EstadoVenta.PENDIENTE_PAGO:
+            venta.estado = Venta.EstadoVenta.ANULADA
+            venta.save(update_fields=['estado'])
+            logger.info(f'[MP Webhook] Venta #{venta.numero} → ANULADA (MP rechazó)')
+
+    except Exception as e:
+        logger.error(f'[MP Webhook] Error procesando payment {payment_id}: {e}')
+
     return Response({'ok': True}, status=status.HTTP_200_OK)
 
 
@@ -729,6 +911,15 @@ def pedido_create(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    # Mapear método de pago del frontend al enum de Venta
+    _METODO_MAP = {
+        'mercadopago':   Venta.MetodoPago.MERCADOPAGO,
+        'transferencia': Venta.MetodoPago.TRANSFERENCIA,
+        'efectivo':      Venta.MetodoPago.EFECTIVO,
+    }
+    metodo_pago_raw = (data.get('metodo_pago') or 'transferencia').lower()
+    metodo_pago = _METODO_MAP.get(metodo_pago_raw, Venta.MetodoPago.TRANSFERENCIA)
+
     try:
         with transaction.atomic():
             subtotal = sum(
@@ -745,8 +936,8 @@ def pedido_create(request):
                 descuento_porcentaje=0,
                 descuento_monto=0,
                 total=total,
-                metodo_pago=Venta.MetodoPago.TRANSFERENCIA,
-                estado=Venta.EstadoVenta.COMPLETADA,
+                metodo_pago=metodo_pago,
+                estado=Venta.EstadoVenta.PENDIENTE_PAGO,
             )
 
             for it in items_para_venta:
@@ -775,11 +966,22 @@ def pedido_create(request):
         cliente_web = get_cliente_from_request(request)
         PedidoWeb.objects.create(venta=venta, cliente_web=cliente_web)
 
+        # Enviar emails (no bloquea si falla)
+        _enviar_emails_pedido(
+            venta=venta,
+            datos_cliente=datos_cliente,
+            items_para_venta=items_para_venta,
+            tipo_entrega=tipo_entrega,
+            direccion_envio=direccion_envio or '',
+        )
+
         return Response({
             'ok': True,
             'venta_id': venta.id,
             'venta_numero': venta.numero,
             'total': format(venta.total, '.2f'),
+            'estado': venta.estado,
+            'metodo_pago': venta.metodo_pago,
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
@@ -787,6 +989,26 @@ def pedido_create(request):
             {'error': 'Error al crear el pedido', 'detalle': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def pedido_status(request, numero):
+    """
+    Estado público de un pedido web (por número de venta).
+    No expone datos sensibles — solo número, estado, total y método de pago.
+    """
+    pedido_web = PedidoWeb.objects.filter(venta__numero=numero).select_related('venta').first()
+    if not pedido_web:
+        return Response({'error': 'Pedido no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    v = pedido_web.venta
+    return Response({
+        'numero': v.numero,
+        'estado': v.estado,
+        'metodo_pago': v.metodo_pago,
+        'total': format(v.total, '.2f'),
+        'fecha': v.fecha.isoformat(),
+    })
 
 
 # --- Admin (requiere autenticación) ---
@@ -821,6 +1043,62 @@ def admin_pedidos_list(request):
         'total_pages': paginator.num_pages,
         'current_page': page.number,
         'results': serializer.data,
+    })
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def admin_pedido_estado(request, pk):
+    """
+    Cambia el estado de un pedido web y notifica al cliente por email.
+    Body: { estado: 'PAGO_CONFIRMADO' | 'EN_PREPARACION' | 'ENVIADO' | 'ENTREGADO' | 'ANULADA' }
+    """
+    ESTADOS_VALIDOS = {
+        Venta.EstadoVenta.PAGO_CONFIRMADO,
+        Venta.EstadoVenta.EN_PREPARACION,
+        Venta.EstadoVenta.ENVIADO,
+        Venta.EstadoVenta.ENTREGADO,
+        Venta.EstadoVenta.ANULADA,
+    }
+
+    venta = Venta.objects.filter(pk=pk).first()
+    if not venta:
+        return Response({'error': 'Pedido no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not MovimientoStock.objects.filter(
+        referencia_id=pk, tipo=MovimientoStock.TipoMovimiento.VENTA_WEB, referencia_tipo='venta'
+    ).exists():
+        return Response({'error': 'No es un pedido web'}, status=status.HTTP_400_BAD_REQUEST)
+
+    nuevo_estado = (request.data.get('estado') or '').strip()
+    if nuevo_estado not in ESTADOS_VALIDOS:
+        return Response(
+            {'error': f'Estado inválido. Opciones: {", ".join(ESTADOS_VALIDOS)}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    venta.estado = nuevo_estado
+    venta.save(update_fields=['estado'])
+
+    # Notificar al cliente por email
+    pedido_web = PedidoWeb.objects.filter(venta=venta).select_related('cliente_web').first()
+    email_cliente = ''
+    nombre_cliente = ''
+    if pedido_web:
+        # Extraer email del campo observaciones (datos_cliente guardados allí)
+        obs = venta.detalles.first()  # no tiene email directo en Venta
+        if pedido_web.cliente_web:
+            email_cliente  = pedido_web.cliente_web.email
+            nombre_cliente = pedido_web.cliente_web.nombre
+
+    _enviar_email_estado(venta, email_cliente, nombre_cliente)
+
+    return Response({
+        'ok': True,
+        'venta_id': venta.id,
+        'numero': venta.numero,
+        'estado': venta.estado,
+        'estado_label': _ESTADO_LABELS.get(venta.estado, venta.estado),
     })
 
 
