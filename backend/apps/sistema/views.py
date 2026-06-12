@@ -277,9 +277,9 @@ def exportar_ventas_excel(request):
 @permission_classes([IsAdminUser])
 def exportar_productos_excel(request):
     """Exporta productos a Excel"""
-    variantes = VarianteProducto.objects.select_related('producto').filter(
-        estado='ACTIVO'
-    ).order_by('producto__nombre', 'nombre')
+    variantes = VarianteProducto.objects.select_related('producto_base').filter(
+        activo=True
+    ).order_by('producto_base__nombre', 'nombre_variante')
     
     exporter = ExcelExporter()
     return exporter.exportar_productos(variantes)
@@ -289,7 +289,7 @@ def exportar_productos_excel(request):
 @permission_classes([IsAdminUser])
 def exportar_clientes_excel(request):
     """Exporta clientes a Excel"""
-    clientes = Cliente.objects.filter(activo=True).order_by('nombre_completo')
+    clientes = Cliente.objects.filter(activo=True).order_by('nombre')
     
     exporter = ExcelExporter()
     return exporter.exportar_clientes(clientes)
@@ -300,8 +300,8 @@ def exportar_clientes_excel(request):
 def exportar_inventario_excel(request):
     """Exporta inventario a Excel"""
     stocks = Stock.objects.select_related(
-        'variante', 'variante__producto', 'deposito'
-    ).all().order_by('deposito__nombre', 'variante__producto__nombre')
+        'variante', 'variante__producto_base', 'deposito'
+    ).all().order_by('deposito__nombre', 'variante__producto_base__nombre')
     
     exporter = ExcelExporter()
     return exporter.exportar_inventario(stocks)

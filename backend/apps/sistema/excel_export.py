@@ -57,7 +57,7 @@ class ExcelExporter:
             self.ws.append([
                 venta.numero,
                 venta.fecha.strftime('%d/%m/%Y %H:%M'),
-                venta.cliente.nombre_completo,
+                venta.cliente.nombre_completo if venta.cliente else 'Consumidor Final',
                 float(venta.total),
                 float(venta.descuento_monto),
                 venta.metodo_pago,
@@ -102,15 +102,15 @@ class ExcelExporter:
         # Datos
         for variante in variantes:
             self.ws.append([
-                variante.sku,
-                variante.codigo_barras or '',
-                variante.producto.nombre,
+                variante.codigo or '',
+                '',
+                variante.producto_base.nombre,
                 variante.nombre_completo,
                 float(variante.costo),
                 float(variante.precio_mostrador),
                 float(variante.precio_tarjeta),
-                variante.stock_total,
-                variante.estado
+                variante.stocks.aggregate(__import__('django.db.models',fromlist=['Sum']).Sum('cantidad'))['cantidad__sum'] or 0,
+                'Activo' if variante.activo else 'Inactivo',
             ])
         
         self._auto_adjust_columns()
@@ -143,14 +143,14 @@ class ExcelExporter:
         
         for cliente in clientes:
             self.ws.append([
-                cliente.dni_cuit,
+                cliente.dni,
                 cliente.nombre_completo,
                 cliente.email or '',
                 cliente.telefono or '',
                 cliente.direccion or '',
-                cliente.localidad or '',
-                cliente.provincia or '',
-                cliente.tipo_cliente
+                '',
+                '',
+                cliente.tipo_cliente,
             ])
         
         self._auto_adjust_columns()
@@ -169,28 +169,24 @@ class ExcelExporter:
         self.ws.title = 'Inventario'
         
         headers = [
-            'Producto', 'SKU', 'Depósito', 'Cantidad',
-            'Stock Mínimo', 'Stock Máximo', 'Alerta'
+            'Producto', 'SKU', 'Depósito', 'Cantidad', 'Última actualización'
         ]
         self.ws.append(headers)
-        
+
         for col_num, header in enumerate(headers, 1):
             cell = self.ws.cell(row=1, column=col_num)
             cell.font = self.header_font
             cell.fill = self.header_fill
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.border = self.border
-        
+
         for stock in stocks:
-            alerta = 'CRÍTICO' if stock.esta_critico else ('BAJO' if stock.esta_bajo else 'OK')
             self.ws.append([
                 stock.variante.nombre_completo,
-                stock.variante.sku,
+                stock.variante.codigo or '',
                 stock.deposito.nombre,
                 stock.cantidad,
-                stock.stock_minimo,
-                stock.stock_maximo,
-                alerta
+                stock.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') if stock.fecha_actualizacion else '',
             ])
         
         self._auto_adjust_columns()
