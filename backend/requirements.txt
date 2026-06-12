@@ -46,6 +46,9 @@ black==24.10.0
 flake8==7.1.1
 isort==5.13.2
 
+# Task scheduler (backups automáticos)
+apscheduler==3.11.2
+
 # Production
 gunicorn==23.0.0
 whitenoise==6.8.2
