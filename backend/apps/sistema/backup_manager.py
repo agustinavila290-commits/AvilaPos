@@ -1,12 +1,14 @@
 """
 Gestor de backups para AvilaPOS.
-Soporta SQLite (desarrollo) y crea ZIPs que incluyen BD + archivos media.
+Soporta SQLite (desarrollo) y PostgreSQL (producción).
+Crea ZIPs que incluyen BD + archivos media.
 """
 import os
 import sqlite3
 import shutil
 import zipfile
 import json
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from django.conf import settings
@@ -16,6 +18,11 @@ from django.utils import timezone
 def _is_sqlite():
     engine = settings.DATABASES['default'].get('ENGINE', '')
     return 'sqlite3' in engine
+
+
+def _is_postgres():
+    engine = settings.DATABASES['default'].get('ENGINE', '')
+    return 'postgresql' in engine or 'postgis' in engine
 
 
 def _get_backup_dir():
@@ -60,7 +67,7 @@ class BackupManager:
             zip_path = self.backup_dir / zip_name
 
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
-                # 1. Base de datos SQLite
+                # 1. Base de datos
                 if _is_sqlite():
                     db_path = Path(settings.DATABASES['default']['NAME'])
                     if db_path.exists():
@@ -68,6 +75,13 @@ class BackupManager:
                         self._backup_sqlite(db_path, tmp_db)
                         zf.write(tmp_db, 'database/db.sqlite3')
                         tmp_db.unlink(missing_ok=True)
+                elif _is_postgres():
+                    tmp_sql = self.backup_dir / f'_tmp_backup_{timestamp}.sql'
+                    try:
+                        self._backup_postgres(tmp_sql)
+                        zf.write(tmp_sql, 'database/db.sql')
+                    finally:
+                        tmp_sql.unlink(missing_ok=True)
 
                 # 2. Media (facturas, imágenes)
                 if self.media_dir and self.media_dir.exists():
@@ -115,6 +129,46 @@ class BackupManager:
             src.close()
             dst.close()
 
+    def _backup_postgres(self, dest: Path):
+        """Dump de PostgreSQL con pg_dump."""
+        db_cfg = settings.DATABASES['default']
+        db_name = db_cfg.get('NAME', '')
+        db_user = db_cfg.get('USER', '')
+        db_host = db_cfg.get('HOST', 'localhost')
+        db_port = str(db_cfg.get('PORT', '5432'))
+        db_pass = db_cfg.get('PASSWORD', '')
+
+        env = os.environ.copy()
+        if db_pass:
+            env['PGPASSWORD'] = db_pass
+
+        cmd = ['pg_dump', '-U', db_user, '-h', db_host, '-p', db_port, '--no-password', db_name]
+
+        with open(str(dest), 'wb') as out_f:
+            result = subprocess.run(cmd, stdout=out_f, stderr=subprocess.PIPE, env=env)
+
+        if result.returncode != 0:
+            dest.unlink(missing_ok=True)
+            raise RuntimeError(f"pg_dump falló: {result.stderr.decode()}")
+
+    def _restaurar_postgres(self, sql_file: Path):
+        """Restaura un dump SQL en PostgreSQL con psql."""
+        db_cfg = settings.DATABASES['default']
+        db_name = db_cfg.get('NAME', '')
+        db_user = db_cfg.get('USER', '')
+        db_host = db_cfg.get('HOST', 'localhost')
+        db_port = str(db_cfg.get('PORT', '5432'))
+        db_pass = db_cfg.get('PASSWORD', '')
+
+        env = os.environ.copy()
+        if db_pass:
+            env['PGPASSWORD'] = db_pass
+
+        cmd = ['psql', '-U', db_user, '-h', db_host, '-p', db_port, '-d', db_name, '-f', str(sql_file)]
+        result = subprocess.run(cmd, stderr=subprocess.PIPE, env=env)
+        if result.returncode != 0:
+            raise RuntimeError(f"psql restauración falló: {result.stderr.decode()}")
+
     # ─── Restauración ────────────────────────────────────────────────────────
 
     def restaurar_backup(self, filename, usuario=None):
@@ -142,9 +196,19 @@ class BackupManager:
                     tmp_restore = self.backup_dir / '_tmp_restore.db'
                     with zf.open(db_entry) as src, open(tmp_restore, 'wb') as dst:
                         shutil.copyfileobj(src, dst)
-                    # Reemplazar BD activa — el servidor debe reiniciarse después
                     shutil.copy2(tmp_restore, db_path)
                     tmp_restore.unlink(missing_ok=True)
+
+                # Restaurar BD PostgreSQL
+                pg_entry = next((n for n in nombres if n.endswith('db.sql')), None)
+                if pg_entry and _is_postgres():
+                    tmp_sql = self.backup_dir / '_tmp_restore.sql'
+                    with zf.open(pg_entry) as src, open(tmp_sql, 'wb') as dst:
+                        shutil.copyfileobj(src, dst)
+                    try:
+                        self._restaurar_postgres(tmp_sql)
+                    finally:
+                        tmp_sql.unlink(missing_ok=True)
 
                 # Restaurar media
                 if self.media_dir:

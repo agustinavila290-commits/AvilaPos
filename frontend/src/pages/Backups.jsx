@@ -195,7 +195,7 @@ export default function Backups() {
       {/* Info del contenido */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap gap-4">
         <span>📦 Cada backup incluye:</span>
-        <span>🗄️ Base de datos SQLite</span>
+        <span>🗄️ Base de datos</span>
         <span>🖼️ Imágenes de productos</span>
         <span>🧾 Comprobantes y facturas</span>
         <span>📋 Metadata</span>
